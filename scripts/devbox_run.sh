@@ -5,6 +5,11 @@ APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$APP_DIR"
 mkdir -p data
 
+# 读取 .env（含 API_PORT 等启动参数）
+set -a
+[ -f .env ] && . ./.env
+set +a
+
 # 杀掉旧进程后后台启动，日志写 data/server.log
 pkill -f "uvicorn app:app" 2>/dev/null || true
 sleep 1
