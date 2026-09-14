@@ -1,0 +1,10 @@
+# Prometheus 抓取配置
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: mihc-agent
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+    # 若应用也容器化则改为 ["app:8000"]

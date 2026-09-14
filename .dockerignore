@@ -1,0 +1,17 @@
+# Docker 构建上下文排除（云端镜像瘦身）
+.git
+.github
+.venv
+__pycache__
+**/__pycache__
+**/*.pyc
+node_modules
+frontend/node_modules
+frontend/dist
+models
+data
+uploads
+assets
+*.mp4
+*.docx
+.DS_Store

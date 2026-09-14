@@ -1,0 +1,38 @@
+# ===== 密钥与敏感信息（严禁提交）=====
+.env
+# 含 MongoDB 密码等部署密钥，仅在 Sealos 控制台粘贴使用
+deploy/sealos/backend.yaml
+*.pem
+*.key
+
+# ===== 个人文件 =====
+*.docx
+*.mp4
+
+# ===== 大体积模型与运行时数据 =====
+models/
+data/
+uploads/
+ffmpeg/
+sample_images/
+*.db
+*.tar
+*.pth
+*.exe
+
+# ===== Python =====
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ===== 前端 =====
+frontend/node_modules/
+frontend/dist/
+
+# ===== 本地工具 =====
+.codegraph/
+opencode.json
+.DS_Store

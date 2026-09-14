@@ -1,0 +1,4 @@
+# 可选：本地嵌入/重排模型依赖（镜像体积大，仅当不配置远程嵌入端点时需要）
+# 云端推荐：EMBEDDING_PROVIDER=openai_compatible + EMBEDDING_API_BASE_URL，不安装本文件
+sentence-transformers>=3.0
+torch>=2.2
