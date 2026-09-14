@@ -19,7 +19,11 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
-from agents.rag_agent.doc_parser import MedicalDocParser
+try:
+    from agents.rag_agent.doc_parser import MedicalDocParser as _MedicalDocParser
+except ImportError:  # pragma: no cover - 云端镜像未安装 docling 时回退轻量解析
+    _MedicalDocParser = None
+
 from core.errors import MIHCError
 
 logger = logging.getLogger(__name__)
@@ -34,7 +38,7 @@ class IngestionPipeline:
         self.milvus = milvus_store
         self.keyword = keyword_store
         self.db = database
-        self.parser = MedicalDocParser()
+        self.parser = _MedicalDocParser() if _MedicalDocParser else None
 
     # ---- 解析 ----
     def parse(self, file_path: str) -> Tuple[str, str]:

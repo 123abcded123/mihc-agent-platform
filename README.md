@@ -1,407 +1,70 @@
-<div align="center">
- 
-![logo](https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant/blob/main/assets/logo_rounded.png)
+# MIHC Agent · 客户多组学 mIHC 科研服务 Agent 平台
 
-<h1 align="center"><strong>⚕️ Multi-Agent-Medical-Assistant :<h6 align="center">AI-powered multi-agentic system for medical diagnosis and assistance</h6></strong></h1>
+面向医疗科研客户（研究肿瘤免疫微环境的科研团队）的受控智能 Agent 平台：
+**产品咨询、实验设计、表格/多组学分析、文献推荐、报告生成**，支持项目、样本、
+marker、客户文件与确定性统计工具，答案带引用、风险提示与审计链路。
 
-<!-- ![PyTorch - Version](https://img.shields.io/badge/PYTORCH-2.0+-red?style=for-the-badge&logo=pytorch) -->
-![Python - Version](https://img.shields.io/badge/PYTHON-3.11+-blue?style=for-the-badge&logo=python&logoColor=white)
-![LangGraph - Version](https://img.shields.io/badge/LangGraph-0.3+-teal?style=for-the-badge&logo=langgraph)
-![LangChain - Version](https://img.shields.io/badge/LangChain-0.3+-teal?style=for-the-badge&logo=langchain)
-![Qdrant Client - Version](https://img.shields.io/badge/Qdrant-1.13+-red?style=for-the-badge&logo=qdrant)
-![Pydantic - Version](https://img.shields.io/badge/Pydantic-2.10+-red?style=for-the-badge&logo=pydantic)
-![FastAPI - Version](https://img.shields.io/badge/FastAPI-0.115+-teal?style=for-the-badge&logo=fastapi)
-![Docling - Version](https://img.shields.io/badge/Docling-3.1+-orange?style=for-the-badge&logo=docling)
-[![Generic badge](https://img.shields.io/badge/License-Apache-<COLOR>.svg?style=for-the-badge)](https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant/blob/main/LICENSE) 
-[![GitHub Issues](https://img.shields.io/github/issues/souvikmajumder26/Multi-Agent-Medical-Assistant.svg?style=for-the-badge)](https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant/issues)
-![Contributions welcome](https://img.shields.io/badge/contributions-welcome-orange.svg?style=for-the-badge)
+> 原则：模型负责“判断该调用什么工具、解释已验证结果”，不替代工具计算
+> `p_value`、阳性率或样本对应关系；权限与安全检查不依赖 Prompt。
 
-</div>
+## 核心能力
 
-----
+| 分支 | 说明 |
+|---|---|
+| 产品咨询 | HyperView/Panel/抗体库/样本接收等公开资料问答（带来源） |
+| 实验设计 | 检索 SOP/Panel，生成方案草稿 + 对照/重复数/终点指标校验 |
+| 表格分析 | CSV/Excel 校验（sample_id 对齐、阈值、分组）→ 确定性统计（阳性率/组间比较/组学关联） |
+| 图像分析 | 图像分支预留：需通道映射与模型版本，否则转人工 |
+| 文献推荐 | Query Rewrite/HyDE → ES/BM25 + Milvus/BGE-M3 双路召回 → RRF + BGE-Reranker |
+| 报告生成 | 依赖已通过质控的 `analysis_run`，区分观察/统计/假设/局限 |
 
-> [!IMPORTANT]  
-> 📋 Version Updates from v2.0 to v2.1 and further:
-> 1. **Document Processing Upgrade**: Unstructured.io has been replaced with Docling for document parsing and extraction of text, tables, and images to be embedded.
-> 2. **Enhanced RAG References**: Links to source documents and reference images present in reranked retrieved chunks stored in local storage are added to the bottom of the RAG responses.
->
-> To use Unstructured.io based solution, refer release - [v2.0](https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant/tree/v2.0).
- 
-## 📚 Table of Contents
-- [Overview](#overview)
-- [Demo](#demo)
-- [Technical Flow Chart](#technical-flowchart)
-- [Key Features](#key-features)
-- [Tech Stack](#technology-stack)
-- [Installation and Setup](#installation-setup)
-  - [Using Docker](#docker-setup)
-  - [Manual Installation](#manual-setup)
-- [Usage](#usage)
-- [Contributions](#contributions)
-- [License](#license)
-- [Citing](#citing)
-- [Contact](#contact)
+## 技术栈
 
-----
+- **后端**：FastAPI + LangGraph 多 Agent 编排 + Pydantic
+- **检索**：ES/BM25 + Milvus(milvus-lite 回退) + RRF 融合 + BGE-Reranker（可降级）
+- **意图**：规则分类器（可替换为 BERT 微调模型）+ 置信度路由 + 澄清/人工分支
+- **存储**：PostgreSQL/SQLite（项目/样本/marker/文件/分析运行/审计），
+  Redis/fakeredis（会话），MongoDB/JSON（badcase/评测），本地对象存储（客户文件）
+- **安全**：PBKDF2 登录 + HMAC token、DFA 敏感词、Prompt 护栏、租户/项目权限
+- **观测**：OpenTelemetry / Prometheus / Langfuse（可选）
 
-## 📌 Overview <a name="overview"></a>
-
-The **Multi-Agent Medical Assistant** is an **AI-powered chatbot** designed to assist with **medical diagnosis, research, and patient interactions**.  
-
-🚀 **Powered by Multi-Agent Intelligence**, this system integrates:  
-- **🤖 Large Language Models (LLMs)**  
-- **🖼️ Computer Vision Models** for medical imaging analysis  
-- **📚 Retrieval-Augmented Generation (RAG)** leveraging vector databases  
-- **🌐 Real-time Web Search** for up-to-date medical insights  
-- **👨‍⚕️ Human-in-the-Loop Validation** to verify AI-based medical image diagnoses  
-
-### **What You’ll Learn from This Project** 📖  
-🔹 **👨‍💻 Multi-Agent Orchestration** with structured graph workflows  
-🔹 **🔍 Advanced RAG Techniques** – hybrid retrieval, semantic chunking, and vector search  
-🔹 **⚡ Confidence-Based Routing** & **Agent-to-Agent Handoff**  
-🔹 **🔒 Scalable, Production-Ready AI with Modularized Code & Robust Exception Handling**  
-
-📂 **For learners**: Check out [`agents/README.md`](agents/README.md) for a **detailed breakdown** of the agentic workflow! 🎯  
-
-<!-- The **Multi-Agent Medical Assistant** is an advanced AI-powered chatbot system designed to assist in medical diagnosis, research, and patient interactions.
-
-Using a **Multi-Agentic framework**, this assistant integrates **Large Language Models, Computer Vision Models, Retrieval Augmented Generation leveraging Vector Database**, and **Web Search** to provide **accurate**, **reliable**, and **up-to-date** medical insights.
-
-This project serves as a **comprehensive resource** for learning and implementing **GenAI with multi-agent orchestration**. It demonstrates **advanced Retrieval-Augmented Generation (RAG)**, integrating **vector search with hybrid retrieval techniques**, **efficient chunking strategies respecting document semantic boundaries**, **confidence-based routing**, **agent-to-agent handoff**, **real-time web search capabilities**, **human-in-the-loop validation** and more. The system incorporates **specialized AI agents** for medical reasoning, diagnosis, and research retrieval, all working seamlessly through a structured graph workflow. Developers will gain insights into **modular agentic AI solution design, and robust exception handling** — ensuring **scalability and production readiness**.
-
-For learners: Refer `agents/README.md` for detailed explanation of the agentic workflow. -->
-
----
-
-## 💫 Demo <a name="demo"></a>
-
-
-https://github.com/user-attachments/assets/d27d4a2e-1c7d-45e2-bbc5-b3d95ccd5b35
-
-
-If you like what you see and would want to support the project's developer, you can <a href="https://www.buymeacoffee.com/souvikmajumder" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> ! :)
-
-📂 **For an even more detailed demo video**: Check out [`Multi-Agent-Medical-Assistant-v1.9`](assets/Multi-Agent-Medical-Assistant-v1.9_Compressed.mp4). 📽️
-
----
-
-## 🛡️ Technical Flow Chart  <a name="technical-flowchart"></a>
-
-![Technical Flow Chart](assets/final_medical_assistant_flowchart_light_rounded.png)
-
----
-
-<!-- ## 🌟 Key Features  <a name="key-features"></a>
-✅ **Multi-Agent System** – Separate agents handle different tasks (diagnosis, retrieval, reasoning, etc.).  
-✅ **RAG-based Retrieval** – Uses Qdrant for vector search & hybrid retrieval techniques.  
-✅ **Medical Image Analysis** – Supports **brain tumor segmentation, chest X-ray disease detection, and skin lesion classification**.  
-✅ **Web Search Agent** – Fetches the latest medical research when required.  
-✅ **Confidence Score Check** – Ensures high accuracy with log probability-based verification.  
-✅ **Speech-to-Text & Text-to-Speech** – Uses **Eleven Labs API** for voice interactions.  
-✅ **Human-in-the-Loop Verification** – Medical professionals validate the AI’s results before final output.  
-✅ **Intuitive UI** – Built for seamless user experience.  
-
----
-
-## 🛠️ Tech Stack  <a name="tech-stack"></a>
-🔹 **Backend**: FastAPI 🚀  
-🔹 **Multi-Agent Orchestration**: LangGraph + LangChain 🤖  
-🔹 **Vector Database**: Qdrant (for retrieval-augmented generation) 🔍  
-🔹 **Medical Image Analysis**: Computer vision models (Brain Tumor - Semantic Segmentation, Chest X-ray - Object Detection, Skin Lesion - Classification) 🏥  
-🔹 **Speech Processing**: Eleven Labs API 🎙️  
-🔹 **UI**: HTML, CSS, JS 🌐  
-🔹 **Deployment**: Docker 🛠️   -->
-
-## ✨ Key Features  <a name="key-features"></a>
-
-- 🤖 **Multi-Agent Architecture** : Specialized agents working in harmony to handle diagnosis, information retrieval, reasoning, and more
-
-- 🔍 **Advanced Agentic RAG Retrieval System** :
-
-  - Docling based parsing to extract text, tables, and images from PDFs.
-  - Embedding markdown formatted text, tables and LLM based image summaries.
-  - LLM based semantic chunking with structural boundary awareness.
-  - LLM based query expansion with related medical domain terms.
-  - Qdrant hybrid search combining BM25 sparse keyword search along with dense embedding vector search.
-  - HuggingFace Cross-Encoder based reranking of retrieved document chunks for accurate LLM reponses.
-  - Input-output guardrails to ensure safe and relevant responses.
-  - Links to source documents and images present in reference document chunks provided with reponse.
-  - Confidence-based agent-to-agent handoff between RAG and Web Search to prevent hallucinations.
-
-- 🏥 **Medical Imaging Analysis**  
-  - Brain Tumor Detection (TBD)
-  - Chest X-ray Disease Classification
-  - Skin Lesion Segmentation
-
-- 🌐 **Real-time Research Integration** : Web search agent that retrieves the latest medical research papers and findings
-
-- 📊 **Confidence-Based Verification** : Log probability analysis ensures high accuracy in medical recommendations
-
-- 🎙️ **Voice Interaction Capabilities** : Seamless speech-to-text and text-to-speech powered by Eleven Labs API
-
-- 👩‍⚕️ **Expert Oversight System** : Human-in-the-loop verification by medical professionals before finalizing outputs
-
-- ⚔️ **Input & Output Guardrails** : Ensures safe, unbiased, and reliable medical responses while filtering out harmful or misleading content
-
-- 💻 **Intuitive User Interface** : Designed for healthcare professionals with minimal technical expertise
-
-> [!NOTE]  
-> Upcoming features:
-> 1. Brain Tumor Medical Computer Vision model integration.
-> 2. Open to suggestions and contributions.
-
----
-
-## 🛠️ Technology Stack  <a name="technology-stack"></a>
-
-| Component | Technologies |
-|-----------|-------------|
-| 🔹 **Backend Framework** | FastAPI |
-| 🔹 **Agent Orchestration** | LangGraph |
-| 🔹 **Document Parsing** | Docling |
-| 🔹 **Knowledge Storage** | Qdrant Vector Database |
-| 🔹 **Medical Imaging** | Computer Vision Models |
-| | • Brain Tumor: Object Detection (PyTorch) |
-| | • Chest X-ray: Image Classification (PyTorch) |
-| | • Skin Lesion: Semantic Segmentation (PyTorch) |
-| 🔹 **Guardrails** | LangChain |
-| 🔹 **Speech Processing** | Eleven Labs API |
-| 🔹 **Frontend** | HTML, CSS, JavaScript |
-| 🔹 **Deployment** | Docker, GitHub Actions CI/CD |
-
----
-
-## 🚀 Installation & Setup  <a name="installation-setup"></a>
-
-## 📌 Option 1: Using Docker  <a name="docker-setup"></a>
-
-### Prerequisites:
-
-- [Docker](https://docs.docker.com/get-docker/) installed on your system
-- API keys for the required services
-
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant.git
-cd Multi-Agent-Medical-Assistant
-```
-
-### 2️⃣ Create Environment File
-- Create a `.env` file in the root directory and add the following API keys:
-
-> [!NOTE]  
-> You may use any llm and embedding model of your choice...
-> 1. If using Azure OpenAI, no modification required.
-> 2. If using direct OpenAI, modify the llm and embedding model definitions in the 'config.py' and provide appropriate env variables.
-> 3. If using local models, appropriate code changes might be required throughout the codebase especially in 'agents'.
-
-> [!WARNING]  
-> Ensure the API keys in the `.env` file are correct and have the necessary permissions.
-> No trailing whitespaces after variable names.
+## 快速开始（本地）
 
 ```bash
-# LLM Configuration (Azure Open AI - gpt-4o used in development)
-# If using any other LLM API key or local LLM, appropriate code modification is required
-deployment_name= 
-model_name=gpt-4o
-azure_endpoint=
-openai_api_key=
-openai_api_version=
+pip install -r requirements.txt
+# 可选：本地 BGE 嵌入/重排（无远程嵌入端点时）
+pip install -r requirements-models.txt
+python scripts/download_models.py   # 下载 bge-m3 / bge-reranker-base 到 models/
 
-# Embedding Model Configuration (Azure Open AI - text-embedding-ada-002 used in development)
-# If using any other embedding model, appropriate code modification is required
-embedding_deployment_name=
-embedding_model_name=text-embedding-ada-002
-embedding_azure_endpoint=
-embedding_openai_api_key=
-embedding_openai_api_version=
+cp .env.example .env                # 按需修改 LLM/嵌入/存储配置
+python app.py                       # 默认 http://127.0.0.1:8000
 
-# Speech API Key (Free credits available with new Eleven Labs Account)
-ELEVEN_LABS_API_KEY=
-
-# Web Search API Key (Free credits available with new Tavily Account)
-TAVILY_API_KEY=
-
-# Hugging Face Token - using reranker model "ms-marco-TinyBERT-L-6"
-HUGGINGFACE_TOKEN=
-
-# (OPTIONAL) If using Qdrant server version, local does not require API key
-QDRANT_URL=
-QDRANT_API_KEY=
+# 前端（开发模式，代理到 8000）
+cd frontend && npm install && npm run dev
 ```
 
-### 3️⃣ Build the Docker Image
-```bash
-docker build -t medical-assistant .
+验证：`GET /health` 返回 healthy；`POST /api/v1/chat` 对话；
+注册登录后使用项目工作台（`POST /api/v1/projects` 等接口）。
+
+## 目录结构
+
+```
+app.py               # FastAPI 入口（对话/鉴权/项目工作台/知识库）
+config.py            # 集中配置（多后端回退）
+core/                # LLM 工厂、嵌入、数据模型、异常
+services/            # 平台服务编排 + 登录鉴权
+mihc/                # mIHC 领域：意图分类、路由、对象存储、确定性表格分析
+agents/              # LangGraph 多 Agent（文献/知识/检验/数据/实验/合并/引用检查）
+rag/                 # 入库管线 + 混合检索（ES/BM25 + Milvus + RRF + Reranker）
+security/            # DFA 敏感词 + Prompt 护栏
+infra/               # PostgreSQL/SQLite、Redis/fakeredis、Mongo/JSON
+observability/       # OTel / Langfuse / Prometheus
+eval/                # Harness 评测（HitRate/Recall/MRR/忠实性/引用/安全）
+finetune/            # BERT 意图微调、SFT/LoRA、DPO 脚本
+frontend/            # Vue3 + Element Plus
+deploy/              # Dockerfile、nginx、Sealos/K8s 部署清单
 ```
 
-### 4️⃣ Run the Docker Container
-```bash
-docker run -d --name medical-assistant-app -p 8000:8000 --env-file .env medical-assistant
-```
-The application will be available at: [http://localhost:8000](http://localhost:8000)
+## 部署（Sealos）
 
-### 5️⃣ Ingest Data into Vector DB from Docker Container
-
-- To ingest a single document:
-```bash
-docker exec medical-assistant-app python ingest_rag_data.py --file ./data/raw/brain_tumors_ucni.pdf
-```
-
-- To ingest multiple documents from a directory:
-```bash
-docker exec medical-assistant-app python ingest_rag_data.py --dir ./data/raw
-```
-
-### Managing the Container:
-
-#### Stop the Container
-```bash
-docker stop medical-assistant-app
-```
-
-#### Start the Container
-```bash
-docker start medical-assistant-app
-```
-
-#### View Logs
-```bash
-docker logs medical-assistant-app
-```
-
-#### Remove the Container
-```bash
-docker rm medical-assistant-app
-```
-
-### Troubleshooting:
-
-#### Container Health Check
-The container includes a health check that monitors the application status. You can check the health status with:
-```bash
-docker inspect --format='{{.State.Health.Status}}' medical-assistant-app
-```
-
-#### Container Not Starting
-If the container fails to start, check the logs for errors:
-```bash
-docker logs medical-assistant-app
-```
-
-
-## 📌 Option 2: Without Using Docker  <a name="manual-setup"></a>
-
-### 1️⃣ Clone the Repository  
-```bash  
-git clone https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant.git  
-cd Multi-Agent-Medical-Assistant  
-```
-
-### 2️⃣ Create & Activate Virtual Environment  
-- If using conda:
-```bash
-conda create --name <environment-name> python=3.11
-conda activate <environment-name>
-```
-- If using python venv:
-```bash
-python -m venv <environment-name>
-source <environment-name>/bin/activate  # For Mac/Linux
-<environment-name>\Scripts\activate     # For Windows  
-```
-
-### 3️⃣ Install Dependencies  
-
-> [!IMPORTANT]  
-> ffmpeg is required for speech service to work.
-
-- If using conda:
-```bash
-conda install -c conda-forge ffmpeg
-```
-```bash
-pip install -r requirements.txt  
-```
-- If using python venv:
-```bash
-winget install ffmpeg
-```
-```bash
-pip install -r requirements.txt  
-```
-
-### 4️⃣ Set Up API Keys  
-- Create a `.env` file and add the required API keys as shown in `Option 1`.
-
-### 5️⃣ Run the Application  
-- Run the following command in the activate environment.
-
-```bash
-python app.py
-```
-The application will be available at: [http://localhost:8000](http://localhost:8000)
-
-### 6️⃣ Ingest additional data into the Vector DB
-Run any one of the following commands as required.
-- To ingest one document at a time:
-```bash
-python ingest_rag_data.py --file ./data/raw/brain_tumors_ucni.pdf
-```
-- To ingest multiple documents from a directory:
-```bash
-python ingest_rag_data.py --dir ./data/raw
-```
-
----
-
-## 🧠 Usage  <a name="usage"></a>
-
-> [!NOTE]
-> 1. The first run can be jittery and may get errors - be patient and check the console for ongoing downloads and installations.
-> 2. On the first run, many models will be downloaded - yolo for tesseract ocr, computer vision agent models, cross-encoder reranker model, etc.
-> 3. Once they are completed, retry. Everything should work seamlessly since all of it is thoroughly tested.
-
-- Upload medical images for **AI-based diagnosis**. Task specific Computer Vision model powered agents - upload images from 'sample_images' folder to try out.
-- Ask medical queries to leverage **retrieval-augmented generation (RAG)** if information in memory or **web-search** to retrieve latest information.  
-- Use **voice-based** interaction (speech-to-text and text-to-speech).  
-- Review AI-generated insights with **human-in-the-loop verification**.  
-
----
-
-## 🤝 Contributions  <a name="contributions"></a>
-Contributions are welcome! Please check the [issues](https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant/issues) tab for feature requests and improvements.  
-
----
-
-## ⚖️ License  <a name="license"></a>
-This project is licensed under the **Apache-2.0 License**. See the [LICENSE](LICENSE) file for details.  
-
----
-
-## 📝 Citing <a name="citing"></a>
-```
-@misc{Souvik2025,
-  Author = {Souvik Majumder},
-  Title = {Multi Agent Medical Assistant},
-  Year = {2025},
-  Publisher = {GitHub},
-  Journal = {GitHub repository},
-  Howpublished = {\url{https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant}}
-}
-```
-
----
-
-## 📬 Contact  <a name="contact"></a>
-For any questions or collaboration inquiries, reach out to **Souvik Majumder** on:  
-
-🔗 **LinkedIn**: [https://www.linkedin.com/in/souvikmajumder26](https://www.linkedin.com/in/souvikmajumder26)
-
-🔗 **GitHub**: [https://github.com/souvikmajumder26](https://github.com/souvikmajumder26)
-
-<p align="right">
- <a href="#top"><b>🔝 Return </b></a>
-</p>
-
----
+公网部署指南见 [DEPLOY.md](DEPLOY.md)：GitHub Actions 构建镜像 → Sealos 发布。
