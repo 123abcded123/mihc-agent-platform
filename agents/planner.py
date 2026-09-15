@@ -25,7 +25,6 @@ PLANNER_PROMPT = """你是医疗科研平台的智能任务规划器。请把用
 可用 Agent：
 - literature_agent 文献检索：检索文献、整理证据、输出引用
 - knowledge_agent 知识问答：基于内部知识库回答医学知识
-- lab_agent 检验解读：解读检查检验结果
 - data_analysis_agent 数据分析：统计方法、数据处理、图表分析
 - experiment_agent 实验设计：设计实验方案并校验
 
@@ -86,9 +85,6 @@ class TaskPlanner:
         for kw in ("检索", "文献", "论文", "研究进展"):
             if kw in q:
                 return "literature_agent"
-        for kw in ("检验", "指标", "检查结果", "化验"):
-            if kw in q:
-                return "lab_agent"
         for kw in ("实验", "方案", "验证", "设计"):
             if kw in q:
                 return "experiment_agent"

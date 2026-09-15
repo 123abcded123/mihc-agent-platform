@@ -1,10 +1,9 @@
 """
 BERT 意图识别模块（对齐简历：BERT 微调模型，意图识别准确率 93.5%+）
 
-职责：对用户问题做 5+1 类意图分类：
+职责：对用户问题做 4+1 类意图分类：
   literature_search（文献检索）、knowledge_qa（知识问答）、
-  lab_interpretation（检验解读）、data_analysis（数据分析）、
-  experiment_design（实验设计）、other（其他）
+  data_analysis（数据分析）、experiment_design（实验设计）、other（其他）
 
 实现：
 - 优先加载微调后的本地 BERT 模型（INTENT_MODEL_PATH）；
@@ -23,20 +22,18 @@ logger = logging.getLogger(__name__)
 DEFAULT_LABELS = [
     "literature_search",
     "knowledge_qa",
-    "lab_interpretation",
     "data_analysis",
     "experiment_design",
     "other",
 ]
 
 # LLM 回退提示词（与 BERT 微调数据同一标签集，保证口径一致）
-LLM_INTENT_PROMPT = """你是医疗科研平台的意图识别模块。请把用户问题归类到以下 6 类之一：
+LLM_INTENT_PROMPT = """你是医疗科研平台的意图识别模块。请把用户问题归类到以下 5 类之一：
 1. literature_search 文献检索：找论文、检索研究进展、需要引用来源（如"检索2020年后关于XX的研究"）
 2. knowledge_qa 知识问答：询问医学知识、机制、定义（如"ROS 与氧化应激是什么关系"）
-3. lab_interpretation 检验解读：解读检查检验结果、指标意义（如"ALT 升高说明什么"）
-4. data_analysis 数据分析：科研数据处理、统计方法、图表分析（如"怎么比较两组表达差异"）
-5. experiment_design 实验设计：设计实验方案、验证思路（如"设计一个体外实验验证XX"）
-6. other 其他：闲聊、非医疗科研问题
+3. data_analysis 数据分析：科研数据处理、统计方法、图表分析（如"怎么比较两组表达差异"）
+4. experiment_design 实验设计：设计实验方案、验证思路（如"设计一个体外实验验证XX"）
+5. other 其他：闲聊、非医疗科研问题
 
 只输出 JSON，格式：
 {{"intent": "<类别>", "reasoning": "<一句话理由>", "confidence": 0.9}}
@@ -48,7 +45,6 @@ RULE_INTENT_KEYWORDS = {
     "literature_search": ["检索", "文献", "论文", "研究进展", "综述", "meta分析", "荟萃"],
     "experiment_design": ["实验设计", "实验方案", "设计一个实验", "体外实验", "体内实验", "验证实验"],
     "data_analysis": ["统计分析", "数据分析", "差异比较", "相关性", "回归", "聚类", "t检验", "方差分析"],
-    "lab_interpretation": ["检验", "化验", "指标解读", "参考范围", "检查结果", "血常规", "肝功能", "肾功能"],
     "knowledge_qa": ["是什么", "为什么", "机制", "原理", "定义", "关系", "区别", "作用"],
 }
 

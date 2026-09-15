@@ -125,6 +125,13 @@ class MihcAnalyzeRequest(BaseModel):
     template_version: str = "mihc_default_v1"
 
 
+class LiteratureIngestRequest(BaseModel):
+    """mIHC 文献自动下载入库请求（PubMed 检索 → 开放获取 PDF → RAG 入库）。"""
+    query: str = Field(min_length=1, max_length=300, description="PubMed 检索词，如 mIHC tumor microenvironment")
+    max_results: int = Field(default=10, ge=1, le=50, description="检索结果数上限")
+    max_download: int = Field(default=5, ge=1, le=20, description="下载入库的开放获取文献数上限")
+
+
 class WorkflowResponse(BaseModel):
     status: str
     branch: str

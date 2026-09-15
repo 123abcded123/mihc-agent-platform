@@ -36,7 +36,8 @@ from config import Config
 from core.errors import MIHCError
 from core.models import (ChatRequest, ChatResponse, IngestResult, ProjectCreateRequest,
                          SampleCreateRequest, MarkerCreateRequest, MihcAnalyzeRequest,
-                         WorkflowResponse, RegisterRequest, LoginRequest, AuthResponse, UserInfo)
+                         WorkflowResponse, RegisterRequest, LoginRequest, AuthResponse, UserInfo,
+                         LiteratureIngestRequest)
 from services.service import MIHCPlatform
 from services.auth import hash_password, verify_password
 from observability.otel import init_otel
@@ -218,6 +219,14 @@ async def get_analysis_run(run_id: str, user: dict = Depends(get_current_user)):
     if not run:
         raise HTTPException(404, detail={"error": {"code": "run_not_found", "message": "分析任务不存在"}})
     return run
+
+
+@app.post("/api/v1/literature/ingest")
+async def ingest_literature(request: LiteratureIngestRequest, user: dict = Depends(get_current_user)):
+    """PubMed 检索 mIHC 文献 → 下载开放获取 PDF → 解析入库（Milvus + 关键词 + PG）。"""
+    return platform_service.ingest_literature(query=request.query, max_results=request.max_results,
+                                              max_download=request.max_download,
+                                              tenant_id=user["tenant_id"])
 
 
 # ---- 会话 ----

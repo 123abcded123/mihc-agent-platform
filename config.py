@@ -141,7 +141,6 @@ class IntentSettings:
         self.labels = [
             "literature_search",   # 文献检索
             "knowledge_qa",        # 知识问答
-            "lab_interpretation",  # 检验解读
             "data_analysis",       # 数据分析
             "experiment_design",   # 实验设计
             "other",               # 其他（闲聊/非科研问题）
@@ -210,6 +209,7 @@ class MihcSettings:
         # 低于该置信度时只澄清，不直接调用业务 Agent。
         self.intent_min_confidence = _env_float("MIHC_INTENT_MIN_CONFIDENCE", 0.75)
         self.object_storage_dir = _env("MIHC_OBJECT_STORAGE_DIR", "./data/objects")
+        self.literature_dir = _env("MIHC_LITERATURE_DIR", "./data/literature")
         self.max_table_rows = _env_int("MIHC_MAX_TABLE_ROWS", 500000)
         self.max_project_files = _env_int("MIHC_MAX_PROJECT_FILES", 100)
         self.default_report_template = _env("MIHC_REPORT_TEMPLATE", "mihc_default_v1")

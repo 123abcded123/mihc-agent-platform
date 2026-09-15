@@ -1,7 +1,7 @@
 """
 BERT 意图识别微调脚本（对齐简历：BERT 微调模型，意图识别准确率 93.5%+）
 
-5+1 类意图：literature_search / knowledge_qa / lab_interpretation /
+4+1 类意图：literature_search / knowledge_qa /
 data_analysis / experiment_design / other
 
 训练产出路径填到 .env 的 INTENT_MODEL_PATH，平台自动加载该模型做意图识别
@@ -22,7 +22,7 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-LABELS = ["literature_search", "knowledge_qa", "lab_interpretation", "data_analysis", "experiment_design", "other"]
+LABELS = ["literature_search", "knowledge_qa", "data_analysis", "experiment_design", "other"]
 
 
 def load_data(path: str):

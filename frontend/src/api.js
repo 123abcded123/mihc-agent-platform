@@ -43,8 +43,11 @@ export const register = (username, password, displayName = '') =>
   request('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ username, password, display_name: displayName }) })
 
 // ---- 对话 ----
-export const chat = (query, sessionId) =>
-  request('/api/v1/chat', { method: 'POST', body: JSON.stringify({ query, session_id: sessionId || null }) })
+export const chat = (query, sessionId, projectId = null) =>
+  request('/api/v1/chat', {
+    method: 'POST',
+    body: JSON.stringify({ query, session_id: sessionId || null, project_id: projectId || null }),
+  })
 
 // ---- 项目工作台（需登录）----
 export const listProjects = () => request('/api/v1/projects')
@@ -89,6 +92,12 @@ export const analyzeTable = (projectId, { question, file_ids }) =>
   })
 
 export const getAnalysisRun = (runId) => request(`/api/v1/analysis-runs/${runId}`)
+
+export const ingestLiterature = (query, maxResults = 10, maxDownload = 5) =>
+  request('/api/v1/literature/ingest', {
+    method: 'POST',
+    body: JSON.stringify({ query, max_results: maxResults, max_download: maxDownload }),
+  })
 
 // ---- 知识库（需登录）----
 export const listDocuments = () => request('/api/v1/documents')

@@ -31,7 +31,7 @@ PRIVACY_PATTERNS = [
     r"\b[\w.-]+@[\w.-]+\.\w+\b",              # 邮箱
 ]
 
-INTENT_TAGS = ["literature_search", "knowledge_qa", "lab_interpretation", "data_analysis", "experiment_design", "other"]
+INTENT_TAGS = ["literature_search", "knowledge_qa", "data_analysis", "experiment_design", "other"]
 DIFFICULTY_TAGS = ["easy", "medium", "hard"]
 SAFETY_TAGS = ["safe", "sensitive", "reject"]
 

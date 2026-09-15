@@ -93,6 +93,18 @@ class MIHCPlatform:
         branch = choose_branch(classification, project_id=request.project_id,
                                file_ids=request.file_ids,
                                min_confidence=self.config.mihc.intent_min_confidence)
+
+        # 对话关联项目编号：登录用户校验项目权限，匿名用户仅做标注（不阻断）
+        project_context = ""
+        if request.project_id:
+            project = self.db.get_project(request.project_id, request.tenant_id)
+            if project and (request.user_id in project["member_ids"] or request.user_id == "anonymous"):
+                project_context = f"当前客户项目：{request.project_id}（{project['project_name']}）"
+            elif project and request.user_id != "anonymous":
+                raise PermissionDeniedError("用户不是该项目的成员")
+            else:
+                project_context = f"当前客户项目：{request.project_id}（无权限或不存在，仅作编号标注）"
+
         if branch not in {"general", "product_consult", "experiment_design", "literature_recommendation"}:
             answer = clarification_for(branch, classification)
             self.sessions.append_message(session_id, "user", query,
@@ -119,6 +131,8 @@ class MIHCPlatform:
             "trace_id": trace_id,
             "history": history,
             "max_steps": self.config.platform.max_agent_steps,
+            "project_id": request.project_id or "",
+            "project_context": project_context,
         }
 
         status = "ok"
@@ -261,6 +275,36 @@ class MIHCPlatform:
             self.db.update_analysis_run(run_id, status="tool_failed", current_node="failed",
                                         errors=[{"code": "tool_failed", "message": str(exc)}], next_action="retry")
             raise MIHCError(f"表格分析失败: {exc}", code="analysis_failed", status_code=422)
+
+    # ---- mIHC 文献下载入库 ----
+    def ingest_literature(self, *, query: str, max_results: int = 10, max_download: int = 5,
+                          tenant_id: str = "mihc") -> dict:
+        """PubMed 检索 mIHC 文献 → 下载开放获取 PDF → 解析入库（Milvus+BM25+PG）。"""
+        from pathlib import Path
+        from mihc.literature import PubMedLiterature
+
+        downloader = PubMedLiterature(self.config.mihc.literature_dir)
+        files = downloader.download(query, max_results=max_results, max_download=max_download)
+        if not files:
+            return {"status": "completed", "query": query, "downloaded": 0, "ingested": 0,
+                    "details": [], "message": "未检索到可下载的开放获取文献，请调整检索词"}
+        embedder = self.graph_holder.embedder
+        pipeline = IngestionPipeline(self.config, embedder, self.graph_holder.retriever.milvus,
+                                     self.graph_holder.retriever.keyword, self.db)
+        details = []
+        for item in files:
+            entry = {"file": Path(item["file_path"]).name, "source": item["source"]}
+            try:
+                result = pipeline.ingest(item["file_path"], source=item["source"],
+                                         permission="research_team", tenant_id=tenant_id)
+                entry.update({"status": "ingested", "doc_id": result["doc_id"], "chunks": result["chunks"]})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("文献入库失败 %s: %s", item["file_path"], exc)
+                entry.update({"status": "failed", "error": str(exc)[:200]})
+            details.append(entry)
+        ingested = sum(1 for d in details if d.get("status") == "ingested")
+        return {"status": "completed", "query": query, "downloaded": len(files),
+                "ingested": ingested, "details": details}
 
     def get_session(self, session_id: str) -> Dict[str, Any]:
         payload = self.sessions.get(session_id)

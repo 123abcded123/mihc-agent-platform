@@ -22,7 +22,7 @@ START → load_context(Redis) → input_guard(DFA+Prompt) ──拦截──> EN
                              END
 
 专业 Agent 注册表（动态路由目标）：
-  literature_agent / knowledge_agent / lab_agent / data_analysis_agent / experiment_agent
+  literature_agent / knowledge_agent / data_analysis_agent / experiment_agent
 """
 
 from __future__ import annotations
@@ -42,7 +42,6 @@ from agents.intent.bert_intent import IntentClassifier
 from agents.base import BaseAgent
 from agents.literature_agent import LiteratureAgent
 from agents.knowledge_agent import KnowledgeAgent
-from agents.lab_interpret_agent import LabInterpretAgent
 from agents.data_analysis_agent import DataAnalysisAgent
 from agents.experiment_agent import ExperimentAgent
 from agents.merge import merge_outputs
@@ -147,8 +146,6 @@ class AgentGraph:
                     self.config, self.llm, self.retriever, self.query_processor),
                 "knowledge_agent": KnowledgeAgent(
                     self.config, self.llm, self.retriever, self.query_processor),
-                "lab_agent": LabInterpretAgent(
-                    self.config, self.llm, self.retriever, self.query_processor),
                 "data_analysis_agent": DataAnalysisAgent(
                     self.config, self.llm, self.retriever, self.query_processor),
                 "experiment_agent": ExperimentAgent(
@@ -184,7 +181,11 @@ class AgentGraph:
     def _node_conversation(self, state: AgentState) -> Dict[str, Any]:
         """闲聊/非科研问题：直接对话，不检索。"""
         history = state.get("history", [])[-6:]
-        messages = [{"role": "system", "content": CONVERSATION_PROMPT}]
+        system_prompt = CONVERSATION_PROMPT
+        project_context = state.get("project_context", "")
+        if project_context:
+            system_prompt += f"\n{project_context}，回答与项目相关的内容时可结合项目编号。"
+        messages = [{"role": "system", "content": system_prompt}]
         for h in history:
             messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
         messages.append({"role": "user", "content": state.get("query", "")})
@@ -198,7 +199,10 @@ class AgentGraph:
             step = {"step_id": 1, "description": query,
                     "agent": TaskPlanner._default_agent(query), "check": ""}
             return {"plan": [step], "step_index": 0, "max_steps": 1}
-        plan = self.planner.plan(state.get("query", ""))
+        query = state.get("query", "")
+        if state.get("project_context"):
+            query = f"{query}\n（{state['project_context']}）"
+        plan = self.planner.plan(query)
         return {"plan": plan, "step_index": 0, "max_steps": len(plan)}
 
     def _node_execute_step(self, state: AgentState) -> Dict[str, Any]:
