@@ -17,6 +17,7 @@ langchain-core>=0.2
 langchain-openai>=0.1
 langgraph>=0.2
 openai>=1.30
+huggingface-hub>=0.24
 
 # ===== 检索：向量/关键词/重排 =====
 pymilvus>=2.4
