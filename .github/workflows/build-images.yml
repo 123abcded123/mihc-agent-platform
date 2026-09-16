@@ -4,13 +4,16 @@ name: build-images
 # 触发：GitHub 网页 Actions → Build Images → Run workflow；或推送 main 分支
 on:
   workflow_dispatch:
+    inputs:
+      vite_api_base:
+        description: '前端调用的后端公网地址（可选，留空则前端同源）'
+        required: false
+        default: ''
   push:
     branches: [main]
 
 env:
   REGISTRY: ghcr.io
-  # 前端访问的后端公网地址（Sealos 后端域名）
-  VITE_API_BASE: https://pjivqevoppjt.sealoshzh.site
 
 jobs:
   backend:
@@ -51,6 +54,6 @@ jobs:
           context: .
           file: Dockerfile.frontend
           build-args: |
-            VITE_API_BASE=${{ env.VITE_API_BASE }}
+            VITE_API_BASE=${{ github.event.inputs.vite_api_base }}
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/mihc-frontend:latest
