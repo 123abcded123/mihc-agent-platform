@@ -115,3 +115,10 @@ class MilvusStore:
         self._ensure_collection()
         stats = self._ensure_client().get_collection_stats(self.collection_name)
         return int(stats.get("row_count", 0))
+
+    def clear(self) -> None:
+        client = self._ensure_client()
+        if client.has_collection(self.collection_name):
+            client.drop_collection(self.collection_name)
+            logger.info("Milvus collection dropped: %s", self.collection_name)
+        self._loaded.discard(self.collection_name)

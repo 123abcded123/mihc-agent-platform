@@ -107,6 +107,12 @@ class LocalBM25Store(_BaseKeywordStore):
             self._rebuild()
             self._persist()
 
+    def clear(self) -> None:
+        with self._lock:
+            self._records = []
+            self._bm25 = None
+            self._persist()
+
 class ElasticsearchStore(_BaseKeywordStore):
 
     def __init__(self, url: str, index: str):
@@ -159,9 +165,14 @@ class ElasticsearchStore(_BaseKeywordStore):
              "score": float(h["_score"])}
             for h in resp["hits"]["hits"]
         ]
-
     def delete_by_doc(self, doc_id: str) -> None:
         self.client.delete_by_query(index=self.index, query={"term": {"doc_id": doc_id}})
+
+    def clear(self) -> None:
+        if self.client.indices.exists(index=self.index):
+            self.client.indices.delete(index=self.index)
+        self._ensure_index()
+
 
 class KeywordStore:
 
@@ -182,3 +193,6 @@ class KeywordStore:
 
     def delete_by_doc(self, doc_id: str) -> None:
         self.backend.delete_by_doc(doc_id)
+
+    def clear(self) -> None:
+        self.backend.clear()

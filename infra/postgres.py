@@ -431,6 +431,12 @@ class Database:
                             embedding_model=c.get("embedding_model", "BGE-M3")))
             s.commit()
 
+    def clear_knowledge(self) -> None:
+        with self.session() as s:
+            s.query(Chunk).delete()
+            s.query(Document).delete()
+            s.commit()
+
     def add_audit(self, **kwargs) -> None:
         with self.session() as s:
             s.add(AuditLog(**kwargs))
