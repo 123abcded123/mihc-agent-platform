@@ -1,10 +1,3 @@
-"""mIHC 文献自动下载模块（PubMed E-utilities + PMC 开放获取 PDF）
-
-流程：
-  esearch（PubMed 检索） → 取 Top-N PMID → efetch（PMC ID 映射）
-  → PMC oa.fcgi（开放获取全文包） → 下载 PDF 到本地目录
-入库由 IngestionPipeline 完成（见 scripts/download_mihc_literature.py 与 API）。
-"""
 
 from __future__ import annotations
 
@@ -22,9 +15,7 @@ logger = logging.getLogger(__name__)
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 OA_BASE = "https://www.ncbi.nlm.nih.gov/pmc/utils/oa/oa.fcgi"
 
-
 class PubMedLiterature:
-    """PubMed/PMC 开放获取文献下载器（无 API Key，遵守限速）。"""
 
     def __init__(self, download_dir: str = "./data/literature", timeout: int = 60):
         self.download_dir = Path(download_dir)
@@ -32,9 +23,7 @@ class PubMedLiterature:
         self.client = httpx.Client(timeout=timeout, follow_redirects=True,
                                    headers={"User-Agent": "MIHC-Agent/1.0 (research assistant)"})
 
-    # ---- PubMed 检索 ----
     def search(self, query: str, max_results: int = 10) -> List[str]:
-        """esearch：返回 PMID 列表。"""
         params = {
             "db": "pubmed",
             "term": query,
@@ -48,7 +37,6 @@ class PubMedLiterature:
         logger.info("PubMed search '%s' -> %d PMIDs", query, len(ids))
         return ids
 
-    # ---- PMID -> PMC ----
     def _pmid_to_pmc(self, pmids: List[str]) -> Dict[str, str]:
         if not pmids:
             return {}
@@ -67,7 +55,6 @@ class PubMedLiterature:
                 mapping[pmid.group(1)] = pmc.group(1)
         return mapping
 
-    # ---- 开放获取 PDF ----
     def _oa_links(self, pmc_ids: List[str]) -> List[Dict[str, str]]:
         links: List[Dict[str, str]] = []
         for pmc in pmc_ids:
@@ -80,15 +67,13 @@ class PubMedLiterature:
                     links.append({"pmc_id": pmc, "pdf_url": pdf.group(1)})
                 else:
                     logger.info("%s 无开放获取 PDF，跳过", pmc)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("oa.fcgi %s 失败: %s", pmc, exc)
-            time.sleep(0.4)  # NCBI 限速
+            time.sleep(0.4)
         return links
 
-    # ---- 下载 ----
     def download(self, query: str, max_results: int = 10,
                  max_download: int = 5) -> List[Dict[str, Any]]:
-        """检索并下载开放获取 PDF，返回 [{file_path, title, source, pmc_id}]。"""
         pmids = self.search(query, max_results=max_results)
         if not pmids:
             return []
@@ -112,7 +97,7 @@ class PubMedLiterature:
                     logger.info("已下载 %s (%d KB)", link["pmc_id"], len(resp.content) // 1024)
                 else:
                     logger.info("%s 返回非 PDF 内容，跳过", link["pmc_id"])
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("下载 %s 失败: %s", link["pmc_id"], exc)
             time.sleep(0.4)
         return downloaded

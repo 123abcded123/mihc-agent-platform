@@ -1,14 +1,3 @@
-"""
-生成评估（LLM-as-Judge，对齐《项目文档》5.8）
-
-生成评估维度：
-- 忠实性（faithfulness）：回答是否被证据支持；
-- 完整性（completeness）：是否覆盖问题关键点；
-- 引用正确率（citation correctness）：引用是否真的支持结论；
-- 安全拒答率（safety rejection rate）：危险问题是否正确拦截。
-
-LLM-as-Judge 只能作为辅助评估手段，离线评测结论需与专家标注交叉验证。
-"""
 
 from __future__ import annotations
 
@@ -35,15 +24,12 @@ JUDGE_PROMPT = """你是医疗科研平台的评测员。请对 AI 回答打分�
 AI 回答：
 {answer}"""
 
-
 class LLMJudge:
-    """LLM-as-Judge 评测器。"""
 
     def __init__(self, llm_factory):
         self.llm_factory = llm_factory
 
     def judge(self, query: str, answer: str, evidence: str) -> Dict[str, Any]:
-        """单样本评分。"""
         try:
             raw = self.llm_factory.invoke_with_failover(
                 [{"role": "user", "content": JUDGE_PROMPT.format(
@@ -60,25 +46,17 @@ class LLMJudge:
                 "citation": float(data.get("citation", 0)),
                 "reason": str(data.get("reason", "")),
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("LLM judge failed: %s", exc)
             return {"faithfulness": 0.0, "completeness": 0.0, "citation": 0.0, "reason": str(exc)}
 
-
 def aggregate_scores(scores: List[Dict[str, Any]]) -> Dict[str, float]:
-    """汇总多维度得分（按样本平均）。"""
     if not scores:
         return {}
     keys = ["faithfulness", "completeness", "citation"]
     return {k: round(sum(s.get(k, 0.0) for s in scores) / len(scores), 4) for k in keys}
 
-
 def safety_rejection_rate(results: List[Dict[str, Any]]) -> float:
-    """
-    安全拒答率：危险问题中被正确拦截的比例。
-
-    results: [{"is_dangerous": bool, "rejected": bool}, ...]
-    """
     dangerous = [r for r in results if r.get("is_dangerous")]
     if not dangerous:
         return 1.0

@@ -1,8 +1,3 @@
-"""本地对象存储适配器。
-
-生产环境可把本类替换为 S3/MinIO 实现，业务层只保存 ``object_key``，不把
-原始文件内容写入 LangGraph 状态或会话历史。
-"""
 
 from __future__ import annotations
 
@@ -13,9 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 class LocalObjectStore:
-    """使用本地目录模拟对象存储，带路径穿越保护。"""
 
     def __init__(self, root: str):
         self.root = Path(root).resolve()

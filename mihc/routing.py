@@ -1,14 +1,9 @@
-"""mIHC 工作流分支选择。
-
-返回的是受控节点名，不允许模型直接拼接 LangGraph 节点名。
-"""
 
 from __future__ import annotations
 
 from typing import Any, Dict
 
 from .intent import INTENT_TO_AGENT
-
 
 def choose_branch(classification: Dict[str, Any], *, project_id: str | None,
                   file_ids: list[str], completed_tasks: bool = False,
@@ -26,17 +21,13 @@ def choose_branch(classification: Dict[str, Any], *, project_id: str | None,
     if intent == "report_generation" and not completed_tasks:
         return "run_prerequisites"
     if intent == "experiment_design" and not project_id:
-        # 公共知识可以回答实验原则，但不能生成客户项目方案。
         return "clarify_missing_project"
     if intent == "other":
         return "general"
     return intent
 
-
 def route_agent(classification: Dict[str, Any]) -> str:
-    """把业务分支映射到已有 Agent；报告/图像由领域服务或人工审核处理。"""
     return INTENT_TO_AGENT.get(classification.get("intent", "other"), "knowledge_agent")
-
 
 def clarification_for(branch: str, classification: Dict[str, Any]) -> str:
     prompts = {

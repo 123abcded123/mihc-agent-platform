@@ -1,10 +1,3 @@
-"""
-登录鉴权服务（无外部依赖：pbkdf2 密码哈希 + HMAC 签名 token）
-
-- 密码永不落盘明文；
-- token = base64url(payload) + "." + HMAC-SHA256 签名，payload 含用户信息与过期时间；
-- 生产环境必须通过 MIHC_AUTH_SECRET 设置强密钥，否则仅用开发默认值。
-"""
 
 from __future__ import annotations
 
@@ -25,12 +18,10 @@ logger = logging.getLogger(__name__)
 
 PBKDF2_ITERATIONS = 120_000
 
-
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), PBKDF2_ITERATIONS)
     return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${digest.hex()}"
-
 
 def verify_password(password: str, stored: str) -> bool:
     try:
@@ -42,9 +33,7 @@ def verify_password(password: str, stored: str) -> bool:
     except (ValueError, AttributeError):
         return False
 
-
 class TokenService:
-    """签发与校验访问 token。"""
 
     def __init__(self, secret: str, ttl_sec: int = 86400):
         self.secret = secret.encode("utf-8")
@@ -83,13 +72,10 @@ class TokenService:
         except (ValueError, json.JSONDecodeError):
             return None
 
-
 def get_token_service(config) -> TokenService:
     return TokenService(config.auth.secret, config.auth.token_ttl_sec)
 
-
 def require_user(authorization: Optional[str] = Header(None)) -> dict:
-    """FastAPI 依赖：从 Authorization: Bearer <token> 解析当前用户。"""
     from app import platform_service
 
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -99,9 +85,7 @@ def require_user(authorization: Optional[str] = Header(None)) -> dict:
         raise HTTPException(401, detail={"error": {"code": "token_invalid", "message": "登录已过期，请重新登录"}})
     return payload
 
-
 def bootstrap_admin(db, config) -> None:
-    """启动时按环境变量创建管理员（幂等）。"""
     if not (config.auth.admin_user and config.auth.admin_password):
         return
     if db.get_user(config.auth.admin_user):
@@ -112,9 +96,7 @@ def bootstrap_admin(db, config) -> None:
                    display_name=config.auth.admin_user)
     logger.info("Admin user '%s' bootstrapped", config.auth.admin_user)
 
-
 def ensure_allowed(requester: dict, tenant_id: str = "mihc") -> None:
-    """租户边界：token 中的租户必须与资源租户一致（admin 除外）。"""
     if requester.get("role") == "admin":
         return
     if requester.get("tenant_id") != tenant_id:

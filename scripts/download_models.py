@@ -1,13 +1,3 @@
-"""
-模型预下载脚本（BGE-M3 嵌入 + BGE-Reranker 重排）
-
-从 HF 镜像（HF_ENDPOINT 可配，默认 hf-mirror.com）下载模型到本地 ./models/，
-供平台本地加载（不依赖 huggingface_hub 运行时下载，支持断点续传）。
-
-用法：
-  python scripts/download_models.py                  # 全部模型
-  python scripts/download_models.py --only bge-m3    # 只下载嵌入模型
-"""
 
 from __future__ import annotations
 
@@ -43,9 +33,7 @@ MODEL_FILES = {
     ],
 }
 
-
 def download_file(url: str, dest: str, expected_size: int | None = None, resume: bool = True) -> bool:
-    """下载单个文件（断点续传 + 进度显示 + 绕过系统代理）。"""
     if os.path.exists(dest) and expected_size and os.path.getsize(dest) >= expected_size:
         print(f"  [跳过] {dest} 已存在")
         return True
@@ -57,7 +45,6 @@ def download_file(url: str, dest: str, expected_size: int | None = None, resume:
         offset = os.path.getsize(dest)
         headers["Range"] = f"bytes={offset}-"
 
-    # 绕过系统代理（本机代理对 hf-mirror 不稳定，直连可用）
     session = requests.Session()
     session.trust_env = False
     last_error = None
@@ -65,7 +52,6 @@ def download_file(url: str, dest: str, expected_size: int | None = None, resume:
         try:
             with session.get(url, stream=True, timeout=120, headers=headers) as r:
                 if r.status_code == 416:
-                    # Range 越界：文件其实已完整，或需要重新下载
                     os.remove(dest)
                     headers.pop("Range", None)
                     offset = 0
@@ -89,13 +75,12 @@ def download_file(url: str, dest: str, expected_size: int | None = None, resume:
                             print(f"\r  {os.path.basename(dest)}: {pct:.1f}% ({done / 1e6:.0f}/{total / 1e6:.0f} MB, {speed:.1f} MB/s)", end="")
                 print()
                 return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_error = exc
             print(f"\n  [重试 {attempt + 1}/5] 下载中断: {exc}")
             time.sleep(3)
     print(f"  [失败] {dest}: {last_error}")
     return False
-
 
 def main():
     parser = argparse.ArgumentParser(description="预下载 BGE-M3 / BGE-Reranker 模型")
@@ -114,7 +99,6 @@ def main():
                 sys.exit(1)
         print(f"{model} 完成 -> {os.path.join(args.dest, model)}")
     print("全部模型就绪。")
-
 
 if __name__ == "__main__":
     main()

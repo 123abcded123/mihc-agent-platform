@@ -1,12 +1,3 @@
-"""
-平台服务层：把存储、检索、安全、Agent 图组装成完整业务能力
-
-- chat：完整对话链路（对齐《项目文档》5.2 端到端流程）；
-- ingest：文档入库；
-- 会话管理：Redis 读写（多会话/多用户隔离）；
-- 审计：PostgreSQL audit_logs + badcase 留存；
-- 观测：Prometheus 指标 + trace_id。
-"""
 
 from __future__ import annotations
 
@@ -35,9 +26,7 @@ from services.auth import get_token_service, bootstrap_admin
 
 logger = logging.getLogger(__name__)
 
-
 class MIHCPlatform:
-    """MIHC 医疗科研智能 Agent 平台服务。"""
 
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config()
@@ -52,15 +41,12 @@ class MIHCPlatform:
         self.tokens = get_token_service(self.config)
         bootstrap_admin(self.db, self.config)
 
-        # 后台预热：首次调用时在后台线程加载嵌入/重排模型（不阻塞启动）
         warmup_thread = threading.Thread(target=self.graph_holder.warmup, daemon=True, name="model-warmup")
         warmup_thread.start()
         logger.info("MIHC Platform initialized (tenant=%s)", self.config.platform.tenant_id)
 
-    # ---- 文档入库 ----
     def ingest_document(self, file_path: str, *, version: str = "", source: str = "",
                         permission: str = "research_team") -> IngestResult:
-        """文档入库：解析→切分→嵌入→Milvus+关键词双写→PG 元数据。"""
         with span("ingest.document", {"file": file_path}):
             embedder = self.graph_holder.embedder
             pipeline = IngestionPipeline(
@@ -75,15 +61,12 @@ class MIHCPlatform:
             )
             return IngestResult(**result)
 
-    # ---- 对话 ----
     def chat(self, request: ChatRequest) -> ChatResponse:
-        """完整对话链路（图执行 + 会话 + 审计 + 指标）。"""
         start = time.time()
         query = request.effective_query()
         if not query:
             raise MIHCError("问题不能为空", code="invalid_request", status_code=422)
         session_id = request.session_id
-        # 会话创建/校验（多会话切换 + 用户隔离）
         if session_id and not self.sessions.exists(session_id):
             raise SessionNotFoundError(f"会话不存在: {session_id}")
         if not session_id:
@@ -94,7 +77,6 @@ class MIHCPlatform:
                                file_ids=request.file_ids,
                                min_confidence=self.config.mihc.intent_min_confidence)
 
-        # 对话关联项目编号：登录用户校验项目权限，匿名用户仅做标注（不阻断）
         project_context = ""
         if request.project_id:
             project = self.db.get_project(request.project_id, request.tenant_id)
@@ -144,7 +126,7 @@ class MIHCPlatform:
             status = "error"
             obs_metrics.record_request(intent, status, time.time() - start)
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             status = "error"
             logger.exception("Chat pipeline failed: %s", exc)
             obs_metrics.record_request(intent, status, time.time() - start)
@@ -154,14 +136,12 @@ class MIHCPlatform:
         answer = final_state.get("answer", final_state.get("merged_output", ""))
         guard_blocked = final_state.get("guard_blocked", False)
 
-        # 会话写回（用户消息 + 助手回复）
         self.sessions.append_message(session_id, "user", query,
                                      max_history=self.config.platform.max_history)
         self.sessions.append_message(session_id, "assistant", answer,
                                      max_history=self.config.platform.max_history)
         self.sessions.set_intent(session_id, intent)
 
-        # 审计日志（对齐文档：没有日志就无法知道错误发生在哪一阶段）
         latency_ms = int((time.time() - start) * 1000)
         self.db.add_audit(
             trace_id=trace_id, session_id=session_id,
@@ -193,7 +173,6 @@ class MIHCPlatform:
             classification=classification,
         )
 
-    # ---- mIHC project and file operations ----
     def require_project(self, project_id: str, tenant_id: str, user_id: str) -> dict:
         project = self.db.get_project(project_id, tenant_id)
         if not project:
@@ -276,10 +255,8 @@ class MIHCPlatform:
                                         errors=[{"code": "tool_failed", "message": str(exc)}], next_action="retry")
             raise MIHCError(f"表格分析失败: {exc}", code="analysis_failed", status_code=422)
 
-    # ---- mIHC 文献下载入库 ----
     def ingest_literature(self, *, query: str, max_results: int = 10, max_download: int = 5,
                           tenant_id: str = "mihc") -> dict:
-        """PubMed 检索 mIHC 文献 → 下载开放获取 PDF → 解析入库（Milvus+BM25+PG）。"""
         from pathlib import Path
         from mihc.literature import PubMedLiterature
 
@@ -298,7 +275,7 @@ class MIHCPlatform:
                 result = pipeline.ingest(item["file_path"], source=item["source"],
                                          permission="research_team", tenant_id=tenant_id)
                 entry.update({"status": "ingested", "doc_id": result["doc_id"], "chunks": result["chunks"]})
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("文献入库失败 %s: %s", item["file_path"], exc)
                 entry.update({"status": "failed", "error": str(exc)[:200]})
             details.append(entry)

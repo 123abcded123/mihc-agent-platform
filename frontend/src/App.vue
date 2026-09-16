@@ -1,6 +1,5 @@
 <template>
   <el-container class="layout">
-    <!-- 侧边栏：会话列表 -->
     <el-aside width="264px" class="sidebar">
       <div class="brand">
         <span class="logo">⚕</span>
@@ -38,8 +37,6 @@
         <el-button v-else class="login-btn" type="primary" plain @click="authVisible = true">登录 / 注册</el-button>
       </div>
     </el-aside>
-
-    <!-- 主区 -->
     <el-container class="right">
       <el-header class="chat-header">
         <div class="header-left">
@@ -122,8 +119,6 @@
         </div>
       </el-main>
     </el-container>
-
-    <!-- 登录/注册 -->
     <el-dialog v-model="authVisible" title="登录 MIHC 平台" width="400px" class="auth-dialog">
       <el-tabs v-model="authMode">
         <el-tab-pane label="登录" name="login">
@@ -142,8 +137,6 @@
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
-
-    <!-- 项目工作台 -->
     <el-drawer v-model="showProjects" title="客户项目工作台" size="46%">
       <div v-if="!user" class="tip-box">
         <el-alert title="请先登录后再管理项目、上传数据和分析" type="warning" :closable="false" />
@@ -227,8 +220,6 @@
         </template>
       </template>
     </el-drawer>
-
-    <!-- 知识库抽屉（含文献自动下载） -->
     <el-drawer v-model="showDocs" title="知识库管理" size="40%">
       <el-divider>mIHC 文献自动下载入库</el-divider>
       <div class="lit-box">
@@ -286,7 +277,6 @@ const examples = [
   '推荐几篇 mIHC 空间分析和免疫浸润相关文献',
 ]
 
-// ---- 会话侧边栏（localStorage 持久化）----
 const conversations = ref([])
 const activeId = ref(null)
 const activeConv = computed(() => conversations.value.find(c => c.id === activeId.value) || null)
@@ -336,7 +326,6 @@ const formatTime = (ts) => {
     : `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-// ---- 鉴权 ----
 const user = ref(getStoredUser())
 const authVisible = ref(false)
 const authMode = ref('login')
@@ -374,7 +363,6 @@ const onUserCommand = (command) => {
   }
 }
 
-// ---- 项目 ----
 const showProjects = ref(false)
 const projects = ref([])
 const currentProject = ref(null)
@@ -465,7 +453,6 @@ const doAnalyze = async () => {
   } catch (e) { ElMessage.error(e.message) } finally { analyzing.value = false }
 }
 
-// ---- 知识库 + 文献 ----
 const litQuery = ref('mIHC tumor immune microenvironment')
 const litLoading = ref(false)
 const litResult = ref(null)
@@ -488,7 +475,6 @@ const doIngest = async ({ file }) => {
   } catch (e) { ElMessage.error(`入库失败：${e.message}`) }
 }
 
-// ---- 对话 ----
 marked.setOptions({ breaks: true })
 const render = (text) => marked.parse(text || '')
 const pretty = (value) => JSON.stringify(value ?? {}, null, 2)

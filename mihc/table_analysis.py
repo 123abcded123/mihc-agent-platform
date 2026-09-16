@@ -1,8 +1,3 @@
-"""mIHC/多组学表格的确定性校验与统计。
-
-模型不参与列匹配、sample_id 对齐、阳性率或 p_value 计算。该模块返回可审计
-的质量报告和聚合结果，报告 Agent 只能消费这些结果。
-"""
 
 from __future__ import annotations
 
@@ -10,17 +5,14 @@ import math
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-
 BASE_CELL_COLUMNS = {"sample_id", "cell_id", "group"}
 BASE_OMICS_COLUMNS = {"sample_id", "feature", "value"}
-
 
 def load_table(path: str, max_rows: int = 500000):
     import pandas as pd
 
     suffix = Path(path).suffix.lower()
     if suffix == ".csv":
-        # 客户文件可能来自 Excel 导出或 Windows 环境，按常见编码逐个尝试。
         last_error = None
         for encoding in ("utf-8-sig", "utf-8", "gb18030"):
             try:
@@ -41,7 +33,6 @@ def load_table(path: str, max_rows: int = 500000):
     df.columns = [str(column).strip() for column in df.columns]
     return df
 
-
 def infer_table_kind(columns: Iterable[str]) -> str:
     columns = {str(column).strip() for column in columns}
     if BASE_CELL_COLUMNS.issubset(columns):
@@ -50,20 +41,16 @@ def infer_table_kind(columns: Iterable[str]) -> str:
         return "omics_table"
     return "unknown"
 
-
 def _sample_map(project_samples: List[dict]) -> Dict[str, dict]:
     return {str(row["sample_id"]): row for row in project_samples}
-
 
 def _resolve_column(columns: Iterable[str], name: str) -> Optional[str]:
     normalized = {str(column).strip().lower().replace("_", ""): column for column in columns}
     key = name.strip().lower().replace("_", "")
     return normalized.get(key)
 
-
 def validate_cell_table(df, project_samples: List[dict], marker_specs: List[dict],
                         required_markers: Optional[List[str]] = None) -> dict:
-    """返回结构化校验结果，不用异常替代用户可读的错误。"""
     errors: List[dict] = []
     warnings: List[dict] = []
     passed: List[str] = []
@@ -101,7 +88,6 @@ def validate_cell_table(df, project_samples: List[dict], marker_specs: List[dict
     else:
         passed.append("unique_cell_id")
 
-    # group 必须和项目样本元数据一致，禁止按行顺序猜测样本对应关系。
     mismatches = []
     for sample_id, group in df[["sample_id", "group"]].dropna().astype(str).drop_duplicates().itertuples(index=False):
         expected = str(samples.get(sample_id, {}).get("group", ""))
@@ -147,7 +133,6 @@ def validate_cell_table(df, project_samples: List[dict], marker_specs: List[dict
         "row_count": int(len(df)),
     }
 
-
 def _p_value(a: list[float], b: list[float]) -> Optional[float]:
     if len(a) < 2 or len(b) < 2:
         return None
@@ -157,9 +142,7 @@ def _p_value(a: list[float], b: list[float]) -> Optional[float]:
     except Exception:
         return None
 
-
 def summarize_cell_groups(df, marker_columns: List[dict]) -> dict:
-    """先按 sample 聚合，再按 group 聚合，避免把细胞行当作独立生物学重复。"""
     import pandas as pd
 
     work = df.copy()
@@ -198,7 +181,6 @@ def summarize_cell_groups(df, marker_columns: List[dict]) -> dict:
     sample_count = {str(group): int(count) for group, count in sample_level.groupby("group")["sample_id"].nunique().items()}
     return {"sample_count": sample_count, "marker_results": results}
 
-
 def summarize_omics(df, project_samples: List[dict], question: str = "") -> dict:
     import pandas as pd
 
@@ -236,7 +218,6 @@ def summarize_omics(df, project_samples: List[dict], question: str = "") -> dict
         comparison = {"groups": groups, "p_value": _p_value(values_by_group[groups[0]], values_by_group[groups[1]])} if len(groups) == 2 else None
         output.append({"feature": feature, "by_group": by_group, "comparison": comparison})
     return {"status": "passed", "omics_results": output}
-
 
 def analyze_tables(cell_df, omics_df, project_samples: List[dict], marker_specs: List[dict],
                    required_markers: Optional[List[str]], question: str) -> dict:

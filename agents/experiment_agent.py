@@ -1,11 +1,3 @@
-"""
-实验设计 Agent（对齐《项目文档》5.2 示例与 5.5 的校验要求）
-
-流程（两阶段）：
-1. 生成阶段：基于检索证据生成实验方案；
-2. 校验阶段：检查方案是否缺少对照组、重复数、终点指标等（可验证步骤），
-   不合格则标注风险，而不是静默输出"看似可行"的方案。
-"""
 
 from __future__ import annotations
 
@@ -45,7 +37,6 @@ VALIDATION_PROMPT = """你是实验方案评审专家。请检查下面的实验
 {protocol}
 </protocol>"""
 
-
 class ExperimentAgent(BaseAgent):
     name = "experiment_agent"
 
@@ -67,13 +58,11 @@ class ExperimentAgent(BaseAgent):
                 "risks": [{"level": "warning", "message": "实验设计缺乏证据支持"}],
             }
 
-        # 阶段 1：生成方案
         protocol = self.llm_factory.invoke_with_failover(
             [{"role": "user", "content": DESIGN_PROMPT.format(query=query, context=context)}],
             role="experiment_design",
         )
 
-        # 阶段 2：方案校验（对照组/重复数/终点指标）
         issues = []
         try:
             import json
@@ -86,7 +75,7 @@ class ExperimentAgent(BaseAgent):
                 raw = raw[4:]
             result = json.loads(raw)
             issues = result.get("issues", [])
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Protocol validation failed: %s", exc)
             issues = ["方案校验未完成，请人工复核"]
 

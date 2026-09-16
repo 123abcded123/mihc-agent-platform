@@ -1,5 +1,5 @@
 // 后端 API 封装（对齐后端 app.py 的 /api/v1 接口契约）
-// 公网部署：构建时通过 VITE_API_BASE 指定后端域名（如 https://xxx.sealoshzh.site）
+
 const BASE = import.meta.env.VITE_API_BASE || ''
 
 const TOKEN_KEY = 'mihc_token'
@@ -35,21 +35,18 @@ async function request(url, options = {}) {
   return resp.json()
 }
 
-// ---- 鉴权 ----
 export const login = (username, password) =>
   request('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
 
 export const register = (username, password, displayName = '') =>
   request('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ username, password, display_name: displayName }) })
 
-// ---- 对话 ----
 export const chat = (query, sessionId, projectId = null) =>
   request('/api/v1/chat', {
     method: 'POST',
     body: JSON.stringify({ query, session_id: sessionId || null, project_id: projectId || null }),
   })
 
-// ---- 项目工作台（需登录）----
 export const listProjects = () => request('/api/v1/projects')
 
 export const createProject = (projectName, description = '') =>
@@ -99,7 +96,6 @@ export const ingestLiterature = (query, maxResults = 10, maxDownload = 5) =>
     body: JSON.stringify({ query, max_results: maxResults, max_download: maxDownload }),
   })
 
-// ---- 知识库（需登录）----
 export const listDocuments = () => request('/api/v1/documents')
 
 export const ingestDocument = async (file, fields = {}) => {

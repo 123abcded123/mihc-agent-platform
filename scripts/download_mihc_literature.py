@@ -1,10 +1,3 @@
-"""
-命令行 mIHC 文献下载入库工具
-
-用法：
-  python scripts/download_mihc_literature.py --query "mIHC tumor microenvironment" --max 10 --download 5
-  python scripts/download_mihc_literature.py --query "multiplex immunofluorescence CD8" --max 10 --download 3 --no-ingest
-"""
 
 from __future__ import annotations
 
@@ -17,7 +10,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
 
 def main():
     parser = argparse.ArgumentParser(description="mIHC 文献自动下载入库")
@@ -46,7 +38,6 @@ def main():
     logger.info("下载 %(downloaded)s 篇，入库 %(ingested)s 篇", result)
     for d in result["details"]:
         logger.info("  %s -> %s", d["file"], d.get("status", "?"))
-
 
 if __name__ == "__main__":
     main()

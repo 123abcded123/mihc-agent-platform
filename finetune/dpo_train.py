@@ -1,14 +1,3 @@
-"""
-DPO 训练脚本（对齐《项目文档》5.6：用偏好对做 DPO）
-
-SFT 学"怎样回答"，DPO 学"两个回答哪个更符合偏好"。
-DPO 不是补充知识的唯一办法；知识更新更适合更新知识库。
-
-用法：
-  python finetune/dpo_train.py --model ./models/qwen3-32b-mihc-lora \
-      --data ./data/instruction_dataset/dpo_train.jsonl \
-      --output ./models/qwen3-32b-mihc-dpo
-"""
 
 from __future__ import annotations
 
@@ -20,7 +9,6 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
 def load_dpo_data(path: str) -> List[Dict[str, str]]:
     samples = []
     with open(path, "r", encoding="utf-8") as f:
@@ -29,7 +17,6 @@ def load_dpo_data(path: str) -> List[Dict[str, str]]:
             if line:
                 samples.append(json.loads(line))
     return samples
-
 
 def main():
     parser = argparse.ArgumentParser(description="DPO 偏好对齐")
@@ -90,7 +77,6 @@ def main():
     model.save_pretrained(args.output)
     tokenizer.save_pretrained(args.output)
     logger.info("DPO 权重已保存: %s", args.output)
-
 
 if __name__ == "__main__":
     main()

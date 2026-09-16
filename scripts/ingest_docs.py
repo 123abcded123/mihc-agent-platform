@@ -1,11 +1,3 @@
-"""
-命令行文档入库工具（对齐《项目文档》5.3 知识库构建流程）
-
-用法：
-  python scripts/ingest_docs.py --file ./data/raw/example.pdf
-  python scripts/ingest_docs.py --dir ./data/raw
-  python scripts/ingest_docs.py --file a.pdf --version 2026-01 --permission research_team
-"""
 
 from __future__ import annotations
 
@@ -23,7 +15,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 SUPPORTED = (".pdf", ".docx", ".md", ".txt")
-
 
 def main():
     parser = argparse.ArgumentParser(description="MIHC 知识库文档入库")
@@ -57,7 +48,6 @@ def main():
 
     logger.info("完成：%d 个文件，共 %d 个片段（Milvus + 关键词库 + PostgreSQL 元数据）",
                 len(files), total_chunks)
-
 
 if __name__ == "__main__":
     main()

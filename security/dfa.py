@@ -1,11 +1,3 @@
-"""
-DFA 敏感词过滤（对齐《项目文档》5.7：DFA 基于有限自动机的字符串匹配）
-
-实现：Aho-Corasick 自动机（pyahocorasick），O(n) 线性匹配。
-- 词表从 security/sensitive_words.txt 加载（一行一词）；
-- 识别患者隐私字段、危险用药、违规内容等敏感词；
-- DFA 只能发现明文敏感词，隐含风险由 Prompt Guardrail 补充（见 prompt_guard.py）。
-"""
 
 from __future__ import annotations
 
@@ -16,9 +8,7 @@ from typing import List, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
-
 class DFASensitiveFilter:
-    """Aho-Corasick 敏感词过滤器。"""
 
     def __init__(self, words_file: str = "./security/sensitive_words.txt"):
         self.words_file = words_file
@@ -47,13 +37,12 @@ class DFASensitiveFilter:
             automaton.make_automaton()
             self._automaton = automaton
             self._engine = "ahocorasick"
-        except ImportError:  # pragma: no cover
+        except ImportError:
             self._automaton = None
             self._engine = "regex_fallback"
         logger.info("DFA filter loaded: %d words (engine=%s)", len(self._words), self._engine)
 
     def scan(self, text: str) -> List[str]:
-        """返回命中的敏感词列表（去重）。"""
         if not text:
             return []
         hits: List[str] = []

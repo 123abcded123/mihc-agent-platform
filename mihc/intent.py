@@ -1,15 +1,8 @@
-"""客户 mIHC 意图、实体和输入需求识别。
-
-这里的规则分类器是一个可离线运行的安全基线。后续可用 BERT 微调模型替换
-``classify``，但输出契约必须保持不变：intent、confidence、entities、
-required_inputs 和 risk_level 都是工作流路由的输入。
-"""
 
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, List
-
 
 MIHC_INTENTS = {
     "product_consult",
@@ -70,14 +63,11 @@ _REQUIRED_INPUTS = {
     "other": [],
 }
 
-
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return any(term.lower() in lowered for term in terms)
 
-
 def extract_entities(query: str) -> Dict[str, Any]:
-    """提取可解释实体，不把实体识别结果当作统计结果。"""
     markers: List[str] = []
     for marker in KNOWN_MARKERS:
         if marker.lower() in query.lower() and marker not in markers:
@@ -106,9 +96,7 @@ def extract_entities(query: str) -> Dict[str, Any]:
     files = re.findall(r"[\w.-]+\.(?:csv|xlsx?|tsv|tif{1,2}|png|jpe?g)", query, flags=re.I)
     return {"markers": markers, "groups": groups, "analysis": analysis, "file_names": files}
 
-
 class MihcIntentClassifier:
-    """输出稳定的 mIHC 分类契约，供 API 和 LangGraph 共用。"""
 
     def __init__(self, min_confidence: float = 0.75):
         self.min_confidence = min_confidence
@@ -118,9 +106,7 @@ class MihcIntentClassifier:
         entities = extract_entities(query)
         matched = [name for name, terms in _INTENT_PATTERNS.items() if _contains_any(query, terms)]
 
-        # 文件存在时，上传表格/图像是强信号，避免被“生成报告”等词覆盖。
         if has_files and ("table_analysis" in matched or any(ext in query.lower() for ext in (".csv", ".xlsx", ".xls", ".tsv"))):
-            # 上传表格且问题包含比较/统计时，确定性数据流程优先于报告包装。
             matched = ["table_analysis"] + [item for item in matched if item != "table_analysis"]
 
         if not matched:
@@ -134,7 +120,6 @@ class MihcIntentClassifier:
                 "risk_level": "low",
             }
 
-        # 去重保序。Panel 同时命中产品咨询和实验设计时保留多意图。
         intents = list(dict.fromkeys(matched))
         primary = intents[0]
         confidence = 0.93 if len(intents) == 1 else 0.86

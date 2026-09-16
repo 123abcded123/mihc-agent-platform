@@ -1,10 +1,3 @@
-"""
-数据分析 Agent（mIHC 平台口径）
-
-职责：对科研统计方法问题做知识库证据检索 + 方法学推荐（带引用）。
-客户表格的确定性计算不经过本 Agent——由 mihc.table_analysis 与
-MihcPlatform.analyze_project_tables 完成，模型只负责解释已验证的 ToolResult。
-"""
 
 from __future__ import annotations
 
@@ -29,7 +22,6 @@ METHOD_PROMPT = """你是医疗科研平台的数据分析专家。请基于 <ev
 <evidence>
 {context}
 </evidence>"""
-
 
 class DataAnalysisAgent(BaseAgent):
     name = "data_analysis_agent"

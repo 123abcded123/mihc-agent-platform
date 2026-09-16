@@ -1,11 +1,3 @@
-"""
-Prompt Guardrail（对齐《项目文档》5.7：输入侧敏感信息检测、Prompt 注入防护、
-输出侧敏感信息和越权内容检测）
-
-DFA 只能发现明文敏感词，本模块用 LLM 补充识别：
-- 输入侧：Prompt 注入（"忽略之前的指令"等）、敏感信息、越权请求；
-- 输出侧：无免责声明的医疗建议、实验假设写成临床结论、泄露患者信息等。
-"""
 
 from __future__ import annotations
 
@@ -36,7 +28,6 @@ OUTPUT_GUARD_PROMPT = """你是医疗科研平台的输出安全审查员。检�
 
 待审查回答：{text}"""
 
-
 class PromptGuardrail:
     def __init__(self, llm_factory, enabled: bool = True):
         self.llm_factory = llm_factory
@@ -55,21 +46,19 @@ class PromptGuardrail:
         return bool(data.get("safe", True)), str(data.get("reason", ""))
 
     def check_input(self, text: str) -> Tuple[bool, str]:
-        """输入侧检查。返回 (safe, reason)。"""
         if not self.enabled:
             return True, ""
         try:
             return self._judge(INPUT_GUARD_PROMPT, text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Input guard unavailable: %s", exc)
             return True, ""
 
     def check_output(self, text: str) -> Tuple[bool, str]:
-        """输出侧检查。返回 (safe, reason)。"""
         if not self.enabled:
             return True, ""
         try:
             return self._judge(OUTPUT_GUARD_PROMPT, text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Output guard unavailable: %s", exc)
             return True, ""

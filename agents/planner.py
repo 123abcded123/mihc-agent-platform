@@ -1,16 +1,3 @@
-"""
-任务规划模块（对齐《项目文档》5.5）
-
-任务规划把复杂问题拆成可验证步骤。例如"检索2020年后肝细胞肿瘤和间质MIHC的研究，
-并设计体外实验方案"可拆为：
-  1. 找到相关文献
-  2. 筛选年份、模型和实验对象
-  3. 总结研究结论
-  4. 根据证据设计实验
-  5. 检查实验方案是否缺少对照组、重复数和终点指标
-
-每步输出 {step_id, description, agent, check}，check 为验证方式。
-"""
 
 from __future__ import annotations
 
@@ -39,9 +26,7 @@ PLANNER_PROMPT = """你是医疗科研平台的智能任务规划器。请把用
 
 用户问题：{query}"""
 
-
 class TaskPlanner:
-    """任务规划器：LLM 拆解 + 结构化校验。"""
 
     def __init__(self, config, llm_factory):
         self.config = config
@@ -62,11 +47,10 @@ class TaskPlanner:
             steps = json.loads(raw)
             if not isinstance(steps, list) or not steps:
                 raise ValueError("empty plan")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Planner failed (%s), fallback to single-step plan", exc)
             steps = [{"step_id": 1, "description": query, "agent": self._default_agent(query), "check": ""}]
 
-        # 参数校验与限制：最大步数、必填字段
         valid = []
         for i, s in enumerate(steps[: self.max_steps], start=1):
             valid.append({
@@ -80,7 +64,6 @@ class TaskPlanner:
 
     @staticmethod
     def _default_agent(query: str) -> str:
-        """规划失败时的兜底路由（按关键词）。"""
         q = query
         for kw in ("检索", "文献", "论文", "研究进展"):
             if kw in q:

@@ -1,11 +1,3 @@
-"""
-文献 Agent（对齐《项目文档》5.2/5.5：文献检索 + 证据整理）
-
-职责：
-- 基于用户问题做检索（Query Rewrite/HyDE → 双路召回 → RRF → BGE-Reranker）；
-- 按用户条件筛选（年份、模型、实验对象等）；
-- 整理证据并输出带引用的结论摘要。
-"""
 
 from __future__ import annotations
 
@@ -23,7 +15,6 @@ LITERATURE_PROMPT = """你是医疗科研平台的文献检索 Agent。
 3. 最后给出综合结论，并指出证据空白。
 要求：每个结论标注引用编号；只使用给出的证据；中文回答。"""
 
-
 class LiteratureAgent(BaseAgent):
     name = "literature_agent"
 
@@ -34,7 +25,6 @@ class LiteratureAgent(BaseAgent):
 
     def _execute(self, state: Dict[str, Any], step: Dict[str, Any]) -> Dict[str, Any]:
         query = step.get("description") or state.get("query", "")
-        # 多路查询（保留原问 + 改写 + HyDE）
         queries = self.query_processor.build_queries(query)
         chunks = self.retriever.retrieve(
             queries,

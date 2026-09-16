@@ -1,16 +1,3 @@
-"""
-BERT 意图识别微调脚本（对齐简历：BERT 微调模型，意图识别准确率 93.5%+）
-
-4+1 类意图：literature_search / knowledge_qa /
-data_analysis / experiment_design / other
-
-训练产出路径填到 .env 的 INTENT_MODEL_PATH，平台自动加载该模型做意图识别
-（未配置时回退 LLM 意图分类）。
-
-用法：
-  python finetune/train_intent.py --data ./data/intent_dataset.jsonl \
-      --output ./models/intent_bert --epochs 3
-"""
 
 from __future__ import annotations
 
@@ -24,9 +11,7 @@ logger = logging.getLogger(__name__)
 
 LABELS = ["literature_search", "knowledge_qa", "data_analysis", "experiment_design", "other"]
 
-
 def load_data(path: str):
-    """加载 JSONL：每行 {"text": "问题", "label": "意图"}。"""
     texts, labels = [], []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -39,7 +24,6 @@ def load_data(path: str):
             texts.append(item["text"])
             labels.append(LABELS.index(item["label"]))
     return texts, labels
-
 
 def main():
     parser = argparse.ArgumentParser(description="BERT 意图分类微调")
@@ -102,7 +86,6 @@ def main():
     model.save_pretrained(args.output)
     tokenizer.save_pretrained(args.output)
     logger.info("意图模型已保存: %s（把该路径配置到 .env 的 INTENT_MODEL_PATH）", args.output)
-
 
 if __name__ == "__main__":
     main()

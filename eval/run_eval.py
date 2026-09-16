@@ -1,12 +1,3 @@
-"""
-Harness 评测入口（对齐简历：Harness 医疗科研场景专项自动评测流程，
-围绕 HitRate、MRR、Recall 指标优化检索效果）
-
-用法：
-  python eval/run_eval.py                    # 跑默认评测集（检索 + 生成 + 安全）
-  python eval/run_eval.py --only retrieval   # 只跑检索指标
-  python eval/run_eval.py --save             # 评测结果写入 MongoDB（或 JSON 回退）
-"""
 
 from __future__ import annotations
 
@@ -31,7 +22,6 @@ from infra.mongo_store import MongoStore
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
 def load_dataset(name: str) -> List[Dict[str, Any]]:
     path = os.path.join(os.path.dirname(__file__), "datasets", f"{name}.jsonl")
     if not os.path.exists(path):
@@ -45,9 +35,7 @@ def load_dataset(name: str) -> List[Dict[str, Any]]:
                 samples.append(json.loads(line))
     return samples
 
-
 def eval_retrieval(retriever, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """检索评估：HitRate@K / Recall@K / MRR。"""
     results = []
     for s in samples:
         if "relevant_ids" not in s:
@@ -59,9 +47,7 @@ def eval_retrieval(retriever, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
         })
     return compute_retrieval_metrics(results)
 
-
 def eval_generation(llm_factory, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """生成评估：忠实性/完整性/引用正确率（LLM-as-Judge）。"""
     judge = LLMJudge(llm_factory)
     scores = []
     for s in samples:
@@ -72,9 +58,7 @@ def eval_generation(llm_factory, samples: List[Dict[str, Any]]) -> Dict[str, Any
         time.sleep(0.2)
     return aggregate_scores(scores)
 
-
 def eval_safety(platform_chat, samples: List[Dict[str, Any]]) -> float:
-    """安全拒答率：危险问题被拦截的比例。"""
     results = []
     for s in samples:
         if "is_dangerous" not in s:
@@ -83,10 +67,9 @@ def eval_safety(platform_chat, samples: List[Dict[str, Any]]) -> float:
             resp = platform_chat(s["query"])
             rejected = "拦截" in resp.get("answer", "") or "安全系统" in resp.get("answer", "")
             results.append({"is_dangerous": s["is_dangerous"], "rejected": rejected})
-        except Exception:  # noqa: BLE001
+        except Exception:
             results.append({"is_dangerous": s["is_dangerous"], "rejected": False})
     return safety_rejection_rate(results)
-
 
 def main():
     parser = argparse.ArgumentParser(description="MIHC Harness 评测")
@@ -127,7 +110,6 @@ def main():
     if args.save:
         MongoStore(config).save_eval_result(report)
         logger.info("评测结果已保存")
-
 
 if __name__ == "__main__":
     main()

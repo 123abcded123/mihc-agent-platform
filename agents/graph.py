@@ -1,29 +1,3 @@
-"""
-LangGraph 多 Agent 编排（对齐《项目文档》5.5 的图结构与 5.2 端到端流程）
-
-图结构：
-START → load_context(Redis) → input_guard(DFA+Prompt) ──拦截──> END
-                              │ 通过
-                              ▼
-                          intent(BERT) ──"other"──> conversation ─┐
-                              │ 业务意图                          │
-                              ▼                                  │
-                          plan(任务拆解)                          │
-                              │                                  │
-                          execute_step ◄──(步骤未完成)──┘         │
-                              │ (循环，动态路由到专业 Agent)       │
-                              ▼                                  │
-                          merge(结果合并)                         │
-                              │                                  │
-                          citation_check(引用检查)                │
-                              │                                  │
-                          output_guard(输出护栏) ◄────────────────┘
-                              │
-                             END
-
-专业 Agent 注册表（动态路由目标）：
-  literature_agent / knowledge_agent / data_analysis_agent / experiment_agent
-"""
 
 from __future__ import annotations
 
@@ -60,13 +34,10 @@ CONVERSATION_PROMPT = """你是 MIHC 医疗科研智能平台的科研助手。�
 
 REFUSAL_MESSAGE = "抱歉，您的输入包含敏感内容或不符合平台使用规范，本次请求已被安全系统拦截。"
 
-
 class AgentGraph:
-    """多 Agent 图编排器（持有全部共享依赖单例）。"""
 
     def __init__(self, config):
         self.config = config
-        # ---- 共享依赖（重量级组件懒加载）----
         self._llm_factory: Optional[LLMFactory] = None
         self._embedder: Optional[Any] = None
         self._retriever: Optional[HybridRetriever] = None
@@ -78,7 +49,6 @@ class AgentGraph:
         self._output_dfa: Optional[DFASensitiveFilter] = None
         self._agents: Dict[str, BaseAgent] = {}
 
-    # ---- 懒加载 ----
     @property
     def llm(self) -> LLMFactory:
         if self._llm_factory is None:
@@ -119,7 +89,6 @@ class AgentGraph:
     def input_guard(self) -> InputGuard:
         if self._input_guard is None:
             self._input_guard = InputGuard(self.config, self.llm)
-            # 快速模式：只保留 DFA 明文过滤，关闭 LLM Prompt 护栏
             self._input_guard.prompt_guard.enabled = (
                 self.config.security.enable_prompt_guard and not self.config.platform.fast_mode)
         return self._input_guard
@@ -139,7 +108,6 @@ class AgentGraph:
         return self._output_dfa
 
     def get_agents(self) -> Dict[str, BaseAgent]:
-        """专业 Agent 注册表（动态路由目标）。"""
         if not self._agents:
             self._agents = {
                 "literature_agent": LiteratureAgent(
@@ -153,7 +121,6 @@ class AgentGraph:
             }
         return self._agents
 
-    # ---- 图节点 ----
     def _node_load_context(self, state: AgentState) -> Dict[str, Any]:
         return {}
 
@@ -179,7 +146,6 @@ class AgentGraph:
         }
 
     def _node_conversation(self, state: AgentState) -> Dict[str, Any]:
-        """闲聊/非科研问题：直接对话，不检索。"""
         history = state.get("history", [])[-6:]
         system_prompt = CONVERSATION_PROMPT
         project_context = state.get("project_context", "")
@@ -194,7 +160,6 @@ class AgentGraph:
 
     def _node_plan(self, state: AgentState) -> Dict[str, Any]:
         if self.config.platform.fast_mode:
-            # 快速模式：规则单步规划（跳过 LLM 拆解）
             query = state.get("query", "")
             step = {"step_id": 1, "description": query,
                     "agent": TaskPlanner._default_agent(query), "check": ""}
@@ -206,7 +171,6 @@ class AgentGraph:
         return {"plan": plan, "step_index": 0, "max_steps": len(plan)}
 
     def _node_execute_step(self, state: AgentState) -> Dict[str, Any]:
-        """执行当前步骤：动态路由到专业 Agent（工具超时/重试在 Agent 基类内处理）。"""
         step_index = state.get("step_index", 0)
         plan = state.get("plan", [])
         if step_index >= len(plan):
@@ -238,7 +202,6 @@ class AgentGraph:
 
     def _node_output_guard(self, state: AgentState) -> Dict[str, Any]:
         answer = state.get("answer", state.get("merged_output", ""))
-        # 第一层：DFA 明文扫描
         hits = self.output_dfa.scan(answer)
         if hits:
             obs_metrics.record_guard_block("output")
@@ -246,7 +209,6 @@ class AgentGraph:
                 "answer": f"{answer}\n\n> ⚠ 输出安全检查：检测到敏感内容，请人工复核。",
                 "output_blocked": True,
             }
-        # 第二层：Prompt Guardrail（LLM 审查）
         safe, reason = self.output_guard.check_output(answer)
         if not safe:
             obs_metrics.record_guard_block("output")
@@ -257,7 +219,6 @@ class AgentGraph:
             }
         return {"answer": answer, "output_blocked": False}
 
-    # ---- 条件边 ----
     @staticmethod
     def _after_guard(state: AgentState) -> str:
         return "end" if state.get("guard_blocked") else "classify_intent"
@@ -270,7 +231,6 @@ class AgentGraph:
     def _after_step(state: AgentState) -> str:
         return "execute_step" if state.get("step_index", 0) < len(state.get("plan", [])) else "merge"
 
-    # ---- 图构建 ----
     def build(self):
         graph = StateGraph(AgentState)
         graph.add_node("load_context", self._node_load_context)
@@ -305,12 +265,11 @@ class AgentGraph:
         return graph.compile()
 
     def warmup(self):
-        """后台预热：提前下载/加载嵌入与重排模型（首次请求不再卡顿）。"""
         try:
             logger.info("Warmup: loading embedding model ...")
             _ = self.embedder
             logger.info("Warmup: loading reranker model ...")
             _ = self.retriever
             logger.info("Warmup: done")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Warmup failed: %s", exc)

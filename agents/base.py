@@ -1,11 +1,3 @@
-"""
-Agent 基类与共享 RAG 生成能力
-
-设计要点（对齐《项目文档》5.5）：
-- 每个 Agent 独立上下文（agent_outputs 隔离），只把必要结果合并；
-- 工具超时、参数校验、失败重试（最多 2 次）；
-- 生成遵守证据约束：只用检索片段、给出引用、不确定时说明证据不足。
-"""
 
 from __future__ import annotations
 
@@ -40,9 +32,7 @@ EVIDENCE_PROMPT = """你是 MIHC 医疗科研智能平台的{role_desc}。
 
 请作答："""
 
-
 class BaseAgent:
-    """专业 Agent 基类：轨迹记录 + 重试封装。"""
 
     name: str = "base_agent"
     max_retries: int = 2
@@ -52,7 +42,6 @@ class BaseAgent:
         self.llm_factory = llm_factory
 
     def run(self, state: Dict[str, Any], step: Dict[str, Any]) -> Dict[str, Any]:
-        """执行一个规划步骤，返回 {output, citations, risks}。子类实现 _execute。"""
         start = time.time()
         agent_name = self.name
         try:
@@ -64,8 +53,7 @@ class BaseAgent:
             })
             logger.info("[%s] done in %dms", agent_name, latency)
             return result
-        except Exception as exc:  # noqa: BLE001
-            # 失败重试（最多 max_retries 次）
+        except Exception as exc:
             for attempt in range(1, self.max_retries + 1):
                 logger.warning("[%s] attempt %d failed: %s, retry %d", agent_name, attempt, exc, attempt + 1)
                 try:
@@ -76,7 +64,7 @@ class BaseAgent:
                         "detail": f"retried after {attempt} failure",
                     })
                     return result
-                except Exception as retry_exc:  # noqa: BLE001
+                except Exception as retry_exc:
                     exc = retry_exc
             latency = int((time.time() - start) * 1000)
             state.setdefault("agent_traces", []).append({
@@ -92,9 +80,7 @@ class BaseAgent:
     def _execute(self, state: Dict[str, Any], step: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError
 
-
 def build_evidence_context(chunks: List[Dict[str, Any]], max_chars: int = 8192) -> Tuple[str, List[Citation]]:
-    """把检索片段拼成带编号的上下文（截断保护），同时生成引用列表。"""
     citations: List[Citation] = []
     parts: List[str] = []
     total = 0
@@ -117,10 +103,8 @@ def build_evidence_context(chunks: List[Dict[str, Any]], max_chars: int = 8192) 
             break
     return "\n\n".join(parts), citations
 
-
 def generate_with_evidence(llm_factory, query: str, chunks: List[Dict[str, Any]],
                            role_desc: str, max_context_chars: int = 8192) -> Dict[str, Any]:
-    """证据约束生成：返回 {answer, citations, confidence}。"""
     context, citations = build_evidence_context(chunks, max_context_chars)
     if not citations:
         return {
@@ -133,11 +117,9 @@ def generate_with_evidence(llm_factory, query: str, chunks: List[Dict[str, Any]]
         [{"role": "user", "content": prompt}],
         role="rag_generate",
     )
-    # 检索置信度：重排分均值归一化（与旧系统一致的近似口径）
     scores = [float(c.get("rerank_score", 0.0)) for c in chunks if c.get("rerank_score") is not None]
     confidence = round(sum(scores) / len(scores), 4) if scores else 0.0
     return {"answer": answer, "citations": citations, "confidence": confidence}
-
 
 def strip_risk(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()

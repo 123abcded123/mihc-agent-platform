@@ -1,13 +1,3 @@
-"""
-指令数据集构建（对齐《项目文档》5.6：1.5 万条指令数据和微调）
-
-处理流程：
-  收集历史问题 → 去重 → 去除个人隐私 → 专家撰写或审核答案
-  → 标注意图、难度、来源和安全等级 → 划分训练/验证/测试集
-  → 输出 SFT/DPO 训练数据
-
-训练数据和评测数据必须隔离（避免 62%→98% 的提升只是记住了答案）。
-"""
 
 from __future__ import annotations
 
@@ -23,21 +13,18 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# 隐私字段正则（姓名/电话/身份证/住址等）
 PRIVACY_PATTERNS = [
-    r"\b1[3-9]\d{9}\b",                       # 手机号
-    r"\b\d{17}[\dXx]\b",                      # 身份证
-    r"(?<=姓|叫|患者为)\S{1,4}(?=，|。|的)",    # 姓名（启发式）
-    r"\b[\w.-]+@[\w.-]+\.\w+\b",              # 邮箱
+    r"\b1[3-9]\d{9}\b",
+    r"\b\d{17}[\dXx]\b",
+    r"(?<=姓|叫|患者为)\S{1,4}(?=，|。|的)",
+    r"\b[\w.-]+@[\w.-]+\.\w+\b",
 ]
 
 INTENT_TAGS = ["literature_search", "knowledge_qa", "data_analysis", "experiment_design", "other"]
 DIFFICULTY_TAGS = ["easy", "medium", "hard"]
 SAFETY_TAGS = ["safe", "sensitive", "reject"]
 
-
 def deduplicate(samples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """按问题文本哈希去重。"""
     seen = set()
     out = []
     for s in samples:
@@ -48,16 +35,12 @@ def deduplicate(samples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         out.append(s)
     return out
 
-
 def remove_privacy(text: str) -> str:
-    """脱敏：替换隐私字段。"""
     for pattern in PRIVACY_PATTERNS:
         text = re.sub(pattern, "[已脱敏]", text)
     return text
 
-
 def normalize(sample: Dict[str, Any]) -> Dict[str, Any]:
-    """标准化：补全意图/难度/来源/安全等级字段。"""
     sample["query"] = remove_privacy(sample["query"].strip())
     sample["answer"] = remove_privacy(sample.get("answer", "").strip())
     if "intent" not in sample or sample["intent"] not in INTENT_TAGS:
@@ -70,9 +53,7 @@ def normalize(sample: Dict[str, Any]) -> Dict[str, Any]:
         sample["safety"] = "safe" if sample["intent"] != "reject" else "reject"
     return sample
 
-
 def split_datasets(samples: List[Dict[str, Any]], train_ratio: float = 0.8, val_ratio: float = 0.1, seed: int = 42):
-    """划分训练/验证/测试（隔离评测集，防止记忆答案）。"""
     random.seed(seed)
     data = list(samples)
     random.shuffle(data)
@@ -85,9 +66,7 @@ def split_datasets(samples: List[Dict[str, Any]], train_ratio: float = 0.8, val_
         "test": data[val_end:],
     }
 
-
 def to_sft_format(sample: Dict[str, Any]) -> Dict[str, Any]:
-    """转为 SFT 训练格式（instruction/input/output）。"""
     return {
         "instruction": sample["query"],
         "input": "",
@@ -100,16 +79,13 @@ def to_sft_format(sample: Dict[str, Any]) -> Dict[str, Any]:
         },
     }
 
-
 def to_dpo_format(sample: Dict[str, Any]) -> Dict[str, Any]:
-    """转为 DPO 偏好对格式（chosen/rejected）。"""
     return {
         "prompt": sample["query"],
         "chosen": sample.get("answer", ""),
         "rejected": sample.get("rejected_answer", sample.get("answer", "")),
         "metadata": {"intent": sample["intent"]},
     }
-
 
 def main():
     parser = argparse.ArgumentParser(description="构建 SFT/DPO 指令数据集")
@@ -149,7 +125,6 @@ def main():
             logger.info("DPO %s -> %s", name, path)
 
     logger.info("完成：训练/验证/测试已隔离，禁止用 test 集参与训练")
-
 
 if __name__ == "__main__":
     main()

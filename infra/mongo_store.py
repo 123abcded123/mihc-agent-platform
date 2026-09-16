@@ -1,13 +1,3 @@
-"""
-MongoDB 存储层（badcase / 评测数据；对齐简历 badcase 闭环与 Harness 评测）
-
-职责：
-- badcases 集合：收集用户反馈、专家标注、归因分析；
-- eval_results 集合：Harness 评测报告与明细；
-- eval_datasets 集合：评测集版本管理。
-
-无 MongoDB 服务时回退 JSON 文件存储（data/mongo_json/），接口一致。
-"""
 
 from __future__ import annotations
 
@@ -22,12 +12,10 @@ logger = logging.getLogger(__name__)
 
 try:
     import pymongo
-except ImportError:  # pragma: no cover
+except ImportError:
     pymongo = None
 
-
 class JSONFileStore:
-    """JSON 文件回退存储：每个集合一个 .json 文件，读写加锁。"""
 
     def __init__(self, base_dir: str):
         self.base_dir = base_dir
@@ -72,9 +60,7 @@ class JSONFileStore:
                     break
         return out
 
-
 class MongoStore:
-    """badcase/评测存储（MongoDB / JSON 文件双后端）。"""
 
     def __init__(self, config):
         self.config = config
@@ -88,7 +74,6 @@ class MongoStore:
             self.db = JSONFileStore(config.mongo.local_dir)
         logger.info("Mongo store backend: %s", self.backend)
 
-    # ---- badcase ----
     def add_badcase(self, *, query: str, answer: str, intent: str = "", trace_id: str = "",
                     feedback: str = "", expert_label: str = "", root_cause: str = "",
                     stage: str = "collected") -> str:
@@ -103,7 +88,6 @@ class MongoStore:
         query = {"stage": stage} if stage else None
         return self.db.find("badcases", query, limit)
 
-    # ---- eval results ----
     def save_eval_result(self, report: Dict[str, Any]) -> str:
         report["created_at"] = datetime.now().isoformat()
         return self.db.insert_one("eval_results", report)
@@ -111,7 +95,6 @@ class MongoStore:
     def list_eval_results(self, limit: int = 20) -> List[dict]:
         return self.db.find("eval_results", None, limit)
 
-    # ---- eval datasets ----
     def save_dataset(self, name: str, samples: List[dict]) -> str:
         return self.db.insert_one("eval_datasets", {"name": name, "samples": samples,
                                                     "count": len(samples),

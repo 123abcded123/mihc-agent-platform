@@ -1,15 +1,3 @@
-"""
-PostgreSQL 存储层（SQLAlchemy）
-
-职责（对齐《项目文档》5.3/5.7 与《重构方案》4.1）：
-- documents：文档版本、来源、权限；
-- chunks：片段索引元数据（chunk_id、标题、来源、嵌入模型）；
-- permissions：租户/用户对文档的权限；
-- audit_logs：请求审计（意图、trace、耗时、安全事件）；
-- badcases：badcase 闭环数据（采集-分析-优化-验证）。
-
-无 PostgreSQL 服务时自动回退 SQLite（同一套 ORM 代码，开发机可用）。
-"""
 
 from __future__ import annotations
 
@@ -29,13 +17,12 @@ logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
-
 class Document(Base):
     __tablename__ = "documents"
     doc_id = Column(String(64), primary_key=True, default=lambda: uuid.uuid4().hex)
     file_name = Column(String(512), nullable=False)
-    source = Column(String(512), default="")        # 原始文件路径或 DOI
-    version = Column(String(32), default="")        # 文档版本，如 2026-01
+    source = Column(String(512), default="")
+    version = Column(String(32), default="")
     tenant_id = Column(String(64), default="mihc", index=True)
     permission = Column(String(256), default="research_team")
     embedding_model = Column(String(64), default="BGE-M3")
@@ -44,19 +31,17 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-
 class Chunk(Base):
     __tablename__ = "chunks"
     chunk_id = Column(String(64), primary_key=True)
     doc_id = Column(String(64), ForeignKey("documents.doc_id"), index=True)
     title = Column(String(512), default="")
-    text_snippet = Column(Text, default="")         # 片段摘要（供元数据检索/审计展示）
+    text_snippet = Column(Text, default="")
     source = Column(String(512), default="")
     version = Column(String(32), default="")
     tenant_id = Column(String(64), default="mihc", index=True)
     embedding_model = Column(String(64), default="BGE-M3")
     created_at = Column(DateTime, default=datetime.now)
-
 
 class Permission(Base):
     __tablename__ = "permissions"
@@ -66,7 +51,6 @@ class Permission(Base):
     doc_id = Column(String(64), index=True)
     allow = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
-
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -83,7 +67,6 @@ class AuditLog(Base):
     safety_event = Column(String(128), default="")
     created_at = Column(DateTime, default=datetime.now, index=True)
 
-
 class Badcase(Base):
     __tablename__ = "badcases"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -92,15 +75,13 @@ class Badcase(Base):
     query = Column(Text)
     answer = Column(Text)
     intent = Column(String(64))
-    stage = Column(String(32), default="collected")   # collected/analyzed/optimized/verified
-    feedback = Column(String(64), default="")         # 用户反馈
-    expert_label = Column(String(64), default="")     # 专家标注
-    root_cause = Column(String(128), default="")      # 归因：路由/召回/重排/Prompt/模型超时
+    stage = Column(String(32), default="collected")
+    feedback = Column(String(64), default="")
+    expert_label = Column(String(64), default="")
+    root_cause = Column(String(128), default="")
     created_at = Column(DateTime, default=datetime.now, index=True)
 
-
 class Project(Base):
-    """客户项目及成员范围。"""
 
     __tablename__ = "projects"
     project_id = Column(String(64), primary_key=True)
@@ -113,7 +94,6 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-
 class Sample(Base):
     __tablename__ = "samples"
     sample_id = Column(String(128), primary_key=True)
@@ -123,7 +103,6 @@ class Sample(Base):
     sample_type = Column(String(128), default="")
     tenant_id = Column(String(64), default="mihc", index=True)
     created_at = Column(DateTime, default=datetime.now)
-
 
 class Marker(Base):
     __tablename__ = "markers"
@@ -136,7 +115,6 @@ class Marker(Base):
     unit = Column(String(128), default="")
     tenant_id = Column(String(64), default="mihc", index=True)
     created_at = Column(DateTime, default=datetime.now)
-
 
 class ProjectFile(Base):
     __tablename__ = "project_files"
@@ -153,7 +131,6 @@ class ProjectFile(Base):
     status = Column(String(32), default="uploaded")
     created_by = Column(String(64), default="anonymous")
     created_at = Column(DateTime, default=datetime.now)
-
 
 class AnalysisRun(Base):
     __tablename__ = "analysis_runs"
@@ -174,7 +151,6 @@ class AnalysisRun(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-
 class Report(Base):
     __tablename__ = "reports"
     report_id = Column(String(64), primary_key=True)
@@ -188,31 +164,25 @@ class Report(Base):
     review_status = Column(String(32), default="pending")
     created_at = Column(DateTime, default=datetime.now)
 
-
 class User(Base):
-    """平台登录用户（密码存 pbkdf2 哈希，绝不明文）。"""
 
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(128), unique=True, nullable=False, index=True)
     password_hash = Column(String(256), nullable=False)
     tenant_id = Column(String(64), default="mihc", index=True)
-    role = Column(String(32), default="customer")   # customer / admin
+    role = Column(String(32), default="customer")
     display_name = Column(String(128), default="")
     created_at = Column(DateTime, default=datetime.now)
-
 
 Index("ix_chunks_tenant_doc", Chunk.tenant_id, Chunk.doc_id)
 Index("ix_project_files_project_kind", ProjectFile.project_id, ProjectFile.kind)
 Index("ix_analysis_runs_project_status", AnalysisRun.project_id, AnalysisRun.status)
 
-
 class Database:
-    """统一数据库访问封装。"""
 
     def __init__(self, url: str):
         if url.startswith("sqlite"):
-            # SQLite 回退：确保目录存在
             path = url.replace("sqlite:///", "")
             if path and path != ":memory:":
                 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
@@ -227,7 +197,6 @@ class Database:
     def session(self) -> Session:
         return self.session_factory()
 
-    # ---- documents ----
     def add_document(self, *, doc_id: str, file_name: str, source: str = "", version: str = "",
                      tenant_id: str = "mihc", permission: str = "research_team",
                      embedding_model: str = "BGE-M3", chunk_count: int = 0) -> None:
@@ -248,7 +217,6 @@ class Database:
                 for r in rows
             ]
 
-    # ---- mIHC projects ----
     @staticmethod
     def _json_load(raw: str, default):
         try:
@@ -364,7 +332,6 @@ class Database:
                                                 ProjectFile.tenant_id == tenant_id).order_by(ProjectFile.created_at.desc()).all()
             return [self._file_dict(row) for row in rows]
 
-    # ---- mIHC analysis runs/reports ----
     @staticmethod
     def _run_dict(row: AnalysisRun) -> dict:
         return {"run_id": row.run_id, "project_id": row.project_id, "tenant_id": row.tenant_id,
@@ -436,7 +403,6 @@ class Database:
                     "review_status": row.review_status,
                     "created_at": row.created_at.isoformat() if row.created_at else ""}
 
-    # ---- users/auth ----
     def get_user(self, username: str) -> Optional[dict]:
         with self.session() as s:
             row = s.query(User).filter(User.username == username).first()
@@ -456,7 +422,6 @@ class Database:
             return {"id": row.id, "username": row.username, "tenant_id": row.tenant_id,
                     "role": row.role, "display_name": row.display_name or row.username}
 
-    # ---- chunks ----
     def add_chunks(self, chunks: List[dict]) -> None:
         with self.session() as s:
             for c in chunks:
@@ -466,13 +431,11 @@ class Database:
                             embedding_model=c.get("embedding_model", "BGE-M3")))
             s.commit()
 
-    # ---- audit ----
     def add_audit(self, **kwargs) -> None:
         with self.session() as s:
             s.add(AuditLog(**kwargs))
             s.commit()
 
-    # ---- badcases ----
     def add_badcase(self, **kwargs) -> int:
         with self.session() as s:
             obj = Badcase(**kwargs)

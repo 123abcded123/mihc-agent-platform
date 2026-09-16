@@ -1,12 +1,3 @@
-"""
-知识问答 Agent（RAG）：基于内部医疗科研知识库回答医学知识问题
-
-对齐《项目文档》5.4 第五步生成要求：
-- 只使用检索片段中的证据；
-- 每个关键结论给出来源；
-- 不确定时说明证据不足；
-- 医疗建议和科研建议分开表达。
-"""
 
 from __future__ import annotations
 
@@ -16,7 +7,6 @@ from typing import Dict, Any
 from agents.base import BaseAgent, generate_with_evidence
 
 logger = logging.getLogger(__name__)
-
 
 class KnowledgeAgent(BaseAgent):
     name = "knowledge_agent"
@@ -44,7 +34,6 @@ class KnowledgeAgent(BaseAgent):
             "level": "info",
             "message": "本回答仅用于科研参考，不构成临床诊疗建议",
         }]
-        # 低置信度提示（供上层判断是否改道或标注证据不足）
         if result["confidence"] < self.config.retrieval.min_retrieval_confidence:
             result["risks"].append({
                 "level": "warning",

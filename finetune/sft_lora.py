@@ -1,15 +1,3 @@
-"""
-LoRA 微调脚本（对齐《项目文档》5.6：SFT/LoRA）
-
-对 Qwen3-32B（或其他 transformers 兼容模型）做 LoRA SFT。
-需要 GPU（32B 建议 >= 2x80G 或使用 QLoRA 量化）；本机 4GB 显存不可训练，
-仅作生产训练脚本（配合 vLLM 部署微调产物，见 deploy/）。
-
-用法：
-  python finetune/sft_lora.py --model Qwen/Qwen3-32B \
-      --data ./data/instruction_dataset/sft_train.jsonl \
-      --output ./models/qwen3-32b-mihc-lora
-"""
 
 from __future__ import annotations
 
@@ -22,7 +10,6 @@ from typing import List, Dict, Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
 def load_sft_data(path: str) -> List[Dict[str, str]]:
     samples = []
     with open(path, "r", encoding="utf-8") as f:
@@ -32,15 +19,12 @@ def load_sft_data(path: str) -> List[Dict[str, str]]:
                 samples.append(json.loads(line))
     return samples
 
-
 def format_prompt(sample: Dict[str, Any]) -> str:
-    """指令模板：instruction 与 input 合并为单条用户消息。"""
     instruction = sample["instruction"]
     inp = sample.get("input", "")
     if inp:
         return f"{instruction}\n\n{inp}"
     return instruction
-
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3 LoRA SFT")
@@ -80,7 +64,6 @@ def main():
     if args.use_4bit:
         model = prepare_model_for_kbit_training(model)
 
-    # LoRA 配置
     lora_config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
@@ -92,7 +75,6 @@ def main():
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
-    # 数据加载与格式化
     samples = load_sft_data(args.data)
     logger.info("训练样本: %d", len(samples))
     formatted = [{"prompt": format_prompt(s), "answer": s["output"]} for s in samples]
@@ -124,7 +106,6 @@ def main():
     model.save_pretrained(args.output)
     tokenizer.save_pretrained(args.output)
     logger.info("LoRA 权重已保存: %s", args.output)
-
 
 if __name__ == "__main__":
     main()

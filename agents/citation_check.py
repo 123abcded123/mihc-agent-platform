@@ -1,9 +1,3 @@
-"""
-引用检查模块（对齐《项目文档》5.8：引用正确率——引用是否真的支持结论）
-
-职责：抽查最终回答中的引用编号是否真实存在于检索证据中，
-并用 LLM 检查关键结论与引用片段的支撑关系。
-"""
 
 from __future__ import annotations
 
@@ -28,9 +22,7 @@ CHECK_PROMPT = """你是引用审查员。检查下面的回答：
 {evidence}
 </evidence>"""
 
-
 def check_citations(state: Dict[str, Any], llm_factory, fast_mode: bool = False) -> Dict[str, Any]:
-    """校验引用完整性；发现问题时在答案末尾附加说明。"""
     answer = state.get("merged_output", "")
     citations = state.get("citations", [])
     risks = state.get("risks", [])
@@ -39,7 +31,6 @@ def check_citations(state: Dict[str, Any], llm_factory, fast_mode: bool = False)
         logger.info("Citation check: no citations, skip")
         return {"answer": answer, "citations": citations, "risks": risks}
 
-    # 快速静态检查：引用的编号是否有越界
     refs = {int(m) for m in re.findall(r"\[(\d+)\]", answer)}
     out_of_range = sorted(r for r in refs if r < 1 or r > len(citations))
     if out_of_range:
@@ -49,7 +40,6 @@ def check_citations(state: Dict[str, Any], llm_factory, fast_mode: bool = False)
     if fast_mode:
         return {"answer": answer, "citations": citations, "risks": risks}
 
-    # LLM 深度检查（抽样：证据过长时截断）
     try:
         evidence = "\n\n".join(f"[{i}] {c.get('text_snippet', '')[:300]}"
                                for i, c in enumerate(citations, start=1))
@@ -71,7 +61,7 @@ def check_citations(state: Dict[str, Any], llm_factory, fast_mode: bool = False)
             )
             risks.append({"level": "warning", "message": msg})
             answer += f"\n\n> ⚠ 引用检查：{msg}"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("LLM citation check failed: %s", exc)
 
     return {"answer": answer, "citations": citations, "risks": risks}

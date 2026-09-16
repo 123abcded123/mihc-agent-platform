@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// 开发时后端代理到 FastAPI(8000)；构建产物由 FastAPI 挂载到 /
 export default defineConfig({
   plugins: [vue()],
   server: {

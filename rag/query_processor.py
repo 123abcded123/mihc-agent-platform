@@ -1,11 +1,3 @@
-"""
-查询处理模块：Query Rewrite + HyDE（对齐《项目文档》5.4 第一步）
-
-原则（文档明确要求）：
-- 保留原始问题，同时生成适合检索的关键词和扩展问题；
-- 不要只保留改写结果，因为改写模型也可能误解用户意图；
-- HyDE 生成"假设文档"，用其向量补充语义召回。
-"""
 
 from __future__ import annotations
 
@@ -31,16 +23,13 @@ HYDE_PROMPT = """你是一名医疗科研专家。请根据用户问题，写一
 
 用户问题：{query}"""
 
-
 class QueryProcessor:
-    """查询改写与 HyDE 生成。"""
 
     def __init__(self, config, llm_factory):
         self.config = config
         self.llm_factory = llm_factory
 
     def rewrite(self, query: str) -> List[str]:
-        """LLM 查询改写：返回最多 3 条改写查询（不含原始问题）。"""
         if self.config.platform.fast_mode or not self.config.retrieval.enable_rewrite:
             return []
         try:
@@ -50,12 +39,11 @@ class QueryProcessor:
             )
             lines = [ln.strip(" -•·") for ln in raw.splitlines() if ln.strip()]
             return [ln for ln in lines if ln][:3]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Query rewrite failed: %s", exc)
             return []
 
     def hyde(self, query: str) -> str:
-        """生成假设文档；失败时返回空串。"""
         if self.config.platform.fast_mode or not self.config.retrieval.enable_hyde:
             return ""
         try:
@@ -63,15 +51,11 @@ class QueryProcessor:
                 [{"role": "user", "content": HYDE_PROMPT.format(query=query)}],
                 role="hyde",
             ).strip()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("HyDE generation failed: %s", exc)
             return ""
 
     def build_queries(self, query: str) -> List[str]:
-        """
-        构建检索查询列表：原始问题 + 改写查询 + HyDE 文档。
-        原始问题始终保留（改写模型可能误解意图）。
-        """
         queries: List[str] = [query]
         for rw in self.rewrite(query):
             if rw and rw != query:
