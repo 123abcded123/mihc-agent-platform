@@ -9,6 +9,11 @@ deploy/sealos/backend.yaml
 *.docx
 *.mp4
 
+# ===== 本地教学/内部文档（仅本机，不上传 GitHub）=====
+项目文档.md
+重构方案.md
+架构与数据流详解.md
+
 # ===== 大体积模型与运行时数据 =====
 models/
 data/
